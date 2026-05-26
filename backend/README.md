@@ -205,6 +205,7 @@ DELETE /api/knowledge/files/{file_id}
 - `GET /api/knowledge/files/{file_id}/chunks`
 - `DELETE /api/knowledge/files/{file_id}`
 - `POST /api/search`
+- `POST /api/qa/repair-advice`
 
 ## 知识库检索测试
 
@@ -288,3 +289,96 @@ POST /api/search
 
 - `admin`、`worker`、`auditor` 均可使用知识库检索。
 - 接口必须携带登录后的 Bearer Token。
+
+## RAG检修建议接口测试
+
+本模块会先调用 `/api/search` 从 `knowledge_chunks` 检索相关片段，再将检索上下文提交给 OpenAI 兼容格式的大模型服务生成检修建议。不会使用 faiss、chromadb、torch、CUDA 等重依赖。
+
+安装依赖：
+
+```powershell
+pip install -r requirements.txt
+```
+
+初始化数据库：
+
+```powershell
+python -m app.init_db
+```
+
+配置 `.env`：
+
+```env
+LLM_API_KEY=你的API Key
+LLM_BASE_URL=https://api.deepseek.com/v1
+LLM_MODEL=deepseek-chat
+```
+
+也可以使用其他兼容 OpenAI 格式的大模型服务。
+
+启动服务：
+
+```powershell
+uvicorn main:app --reload
+```
+
+打开 Swagger：
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+点击右上角 `Authorize` 登录：
+
+```text
+username: admin
+password: admin123456
+```
+
+确保已经上传知识库文档，并且 `/api/search` 能检索到结果。
+
+测试接口：
+
+```text
+POST /api/qa/repair-advice
+```
+
+请求示例：
+
+```json
+{
+  "device_name": "曳引电梯",
+  "device_model": "TX-1000",
+  "fault_description": "电梯停在层站，不关门",
+  "top_k": 5
+}
+```
+
+返回示例：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "record_id": 1,
+    "answer": "...",
+    "references": [
+      {
+        "chunk_id": 1,
+        "file_id": 1,
+        "source_file_name": "test_elevator.txt",
+        "document_type": "repair_manual",
+        "chunk_index": 0,
+        "score": 26.46
+      }
+    ]
+  }
+}
+```
+
+如果未配置大模型参数，接口会返回明确错误：
+
+```text
+大模型API未配置，请检查LLM_API_KEY、LLM_BASE_URL、LLM_MODEL
+```
