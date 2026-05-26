@@ -13,6 +13,7 @@ from app.schemas.auth import (
     LoginRequest,
     LoginResponse,
     LoginResponseData,
+    OAuthTokenResponse,
 )
 from app.services.user_service import UserService
 
@@ -20,15 +21,22 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
+def build_oauth_token_response(user: User) -> OAuthTokenResponse:
+    return OAuthTokenResponse(
+        access_token=create_access_token(subject=str(user.id)),
+        token_type="bearer",
+    )
+
+
 def build_login_response(user: User) -> dict:
-    access_token = create_access_token(subject=str(user.id))
+    token = build_oauth_token_response(user)
     user_data = UserService.to_current_user_response(user)
     return {
         "code": 200,
         "message": "success",
         "data": LoginResponseData(
-            access_token=access_token,
-            token_type="bearer",
+            access_token=token.access_token,
+            token_type=token.token_type,
             user=user_data,
         ),
     }
@@ -84,7 +92,7 @@ def require_roles(roles: list[str]) -> Callable[[User], User]:
     return role_checker
 
 
-@router.post("/login", response_model=LoginResponse)
+@router.post("/login", response_model=OAuthTokenResponse)
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
@@ -96,7 +104,7 @@ def login(
             detail="用户名或密码错误",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return build_login_response(user)
+    return build_oauth_token_response(user)
 
 
 @router.post("/login-json", response_model=LoginResponse)

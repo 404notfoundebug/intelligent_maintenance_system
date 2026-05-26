@@ -204,3 +204,87 @@ DELETE /api/knowledge/files/{file_id}
 - `GET /api/knowledge/files/{file_id}`
 - `GET /api/knowledge/files/{file_id}/chunks`
 - `DELETE /api/knowledge/files/{file_id}`
+- `POST /api/search`
+
+## 知识库检索测试
+
+本模块只实现传统轻量检索，不调用大模型，也不生成最终检修建议。当前检索逻辑基于 `jieba` 中文分词、关键词匹配、标题/正文权重、完整短语命中加分和文档类型轻微加权。
+
+测试流程：
+
+```powershell
+pip install -r requirements.txt
+python -m app.init_db
+uvicorn main:app --reload
+```
+
+打开 Swagger：
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+点击右上角 `Authorize` 登录：
+
+```text
+username: admin
+password: admin123456
+```
+
+确保已经上传过知识库文档，并且 `knowledge_chunks` 表中有数据。
+
+测试接口：
+
+```text
+POST /api/search
+```
+
+请求示例：
+
+```json
+{
+  "query": "电梯停在层站，不关门",
+  "top_k": 5
+}
+```
+
+可选过滤参数：
+
+```json
+{
+  "query": "控制柜显示E35故障码",
+  "top_k": 5,
+  "document_type": "repair_manual",
+  "file_id": null
+}
+```
+
+返回示例：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "query": "电梯停在层站，不关门",
+    "total": 1,
+    "results": [
+      {
+        "chunk_id": 1,
+        "file_id": 1,
+        "source_file_name": "test_elevator.txt",
+        "document_type": "repair_manual",
+        "chunk_index": 0,
+        "title": null,
+        "content": "...",
+        "score": 12.5
+      }
+    ]
+  }
+}
+```
+
+权限说明：
+
+- `admin`、`worker`、`auditor` 均可使用知识库检索。
+- 接口必须携带登录后的 Bearer Token。

@@ -8,6 +8,11 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class OAuthTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
 class LoginResponseData(BaseModel):
     access_token: str
     token_type: str
