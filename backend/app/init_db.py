@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import Base, engine
 from app.core.security import get_password_hash
-from app.models import Device, Role, User
+from app.models import Device, InspectionOrder, InspectionOrderStep, InspectionTemplate, InspectionTemplateStep, Role, User
 
 
 DEFAULT_ROLES = [

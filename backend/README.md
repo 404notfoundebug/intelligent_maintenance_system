@@ -209,6 +209,18 @@ DELETE /api/knowledge/files/{file_id}
 - `GET /api/devices/{device_id}`
 - `PUT /api/devices/{device_id}`
 - `DELETE /api/devices/{device_id}`
+- `POST /api/inspections/templates`
+- `GET /api/inspections/templates`
+- `GET /api/inspections/templates/{template_id}`
+- `PUT /api/inspections/templates/{template_id}`
+- `DELETE /api/inspections/templates/{template_id}`
+- `POST /api/inspections/orders`
+- `GET /api/inspections/orders`
+- `GET /api/inspections/orders/{order_id}`
+- `PUT /api/inspections/orders/{order_id}/start`
+- `PUT /api/inspections/orders/{order_id}/steps/{step_id}`
+- `PUT /api/inspections/orders/{order_id}/complete`
+- `DELETE /api/inspections/orders/{order_id}`
 - `POST /api/search`
 - `POST /api/qa/repair-advice`
 
@@ -482,3 +494,153 @@ DELETE /api/devices/{device_id}
 - `admin`：可以新增、查询、修改、删除设备。
 - `auditor`：可以新增、查询、修改设备。
 - `worker`：只能查询设备。
+
+## 点检模板与点检工单接口测试
+
+点检模块用于维护标准化点检模板，并根据具体设备和模板生成点检工单。创建工单时，系统会自动复制模板步骤，维保人员可逐项填写检查结果，全部步骤填写后才能完成工单。
+
+安装依赖：
+
+```powershell
+pip install -r requirements.txt
+```
+
+初始化数据库：
+
+```powershell
+python -m app.init_db
+```
+
+启动服务：
+
+```powershell
+uvicorn main:app --reload
+```
+
+打开 Swagger：
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+点击右上角 `Authorize` 登录：
+
+```text
+username: admin
+password: admin123456
+```
+
+确保已经有一台设备：
+
+```text
+GET /api/devices
+```
+
+创建点检模板：
+
+```text
+POST /api/inspections/templates
+```
+
+请求示例：
+
+```json
+{
+  "template_name": "曳引电梯月度点检模板",
+  "device_type": "traction_elevator",
+  "inspection_type": "monthly",
+  "description": "适用于曳引电梯的月度维保点检",
+  "is_active": true,
+  "steps": [
+    {
+      "step_order": 1,
+      "area": "机房",
+      "item_name": "控制柜检查",
+      "item_content": "检查控制柜运行状态、报警信息和接线情况",
+      "standard": "控制柜无异常报警，接线无松动",
+      "required_photo": true,
+      "required_remark": false
+    },
+    {
+      "step_order": 2,
+      "area": "层站",
+      "item_name": "层门检查",
+      "item_content": "检查层门开关是否顺畅，门锁触点是否正常",
+      "standard": "层门开关顺畅，门锁触点可靠",
+      "required_photo": false,
+      "required_remark": false
+    }
+  ]
+}
+```
+
+查询模板：
+
+```text
+GET /api/inspections/templates
+GET /api/inspections/templates/{template_id}
+```
+
+创建点检工单：
+
+```text
+POST /api/inspections/orders
+```
+
+请求示例：
+
+```json
+{
+  "device_id": 1,
+  "template_id": 1,
+  "order_name": "1号楼客梯月度点检工单",
+  "assigned_to": 1,
+  "remark": "测试工单"
+}
+```
+
+查看工单详情：
+
+```text
+GET /api/inspections/orders/{order_id}
+```
+
+开始工单：
+
+```text
+PUT /api/inspections/orders/{order_id}/start
+```
+
+填写步骤结果：
+
+```text
+PUT /api/inspections/orders/{order_id}/steps/{step_id}
+```
+
+请求示例：
+
+```json
+{
+  "result": "normal",
+  "remark": "检查正常",
+  "photo_path": ""
+}
+```
+
+完成工单：
+
+```text
+PUT /api/inspections/orders/{order_id}/complete
+```
+
+删除工单：
+
+```text
+DELETE /api/inspections/orders/{order_id}
+```
+
+权限说明：
+
+- `admin`：可以管理模板和全部工单。
+- `auditor`：可以创建、修改模板，创建、查看、处理和删除工单。
+- `worker`：只能查看、创建和处理分配给自己的工单，不能管理模板，不能删除工单。
