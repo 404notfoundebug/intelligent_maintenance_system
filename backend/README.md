@@ -204,6 +204,11 @@ DELETE /api/knowledge/files/{file_id}
 - `GET /api/knowledge/files/{file_id}`
 - `GET /api/knowledge/files/{file_id}/chunks`
 - `DELETE /api/knowledge/files/{file_id}`
+- `POST /api/devices`
+- `GET /api/devices`
+- `GET /api/devices/{device_id}`
+- `PUT /api/devices/{device_id}`
+- `DELETE /api/devices/{device_id}`
 - `POST /api/search`
 - `POST /api/qa/repair-advice`
 
@@ -382,3 +387,98 @@ POST /api/qa/repair-advice
 ```text
 大模型API未配置，请检查LLM_API_KEY、LLM_BASE_URL、LLM_MODEL
 ```
+
+## 设备管理接口测试
+
+设备管理模块用于维护电梯、扶梯、自动人行道等设备台账，后续故障上报、点检工单、维保记录和检修建议都可以关联具体设备。
+
+安装依赖：
+
+```powershell
+pip install -r requirements.txt
+```
+
+初始化数据库：
+
+```powershell
+python -m app.init_db
+```
+
+启动服务：
+
+```powershell
+uvicorn main:app --reload
+```
+
+打开 Swagger：
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+点击右上角 `Authorize` 登录：
+
+```text
+username: admin
+password: admin123456
+```
+
+新增设备：
+
+```text
+POST /api/devices
+```
+
+请求示例：
+
+```json
+{
+  "device_name": "1号楼客梯",
+  "device_code": "ELV-001",
+  "device_type": "traction_elevator",
+  "device_model": "TX-1000",
+  "manufacturer": "某某电梯有限公司",
+  "installation_location": "1号楼东侧",
+  "maintenance_company": "某某维保公司",
+  "responsible_person": "张三",
+  "contact_phone": "13800000000",
+  "status": "normal",
+  "remark": "测试设备"
+}
+```
+
+设备列表：
+
+```text
+GET /api/devices?page=1&page_size=10
+```
+
+支持查询参数：
+
+- `keyword`：按设备名称、设备编号、安装位置模糊查询
+- `device_type`：设备类型过滤，支持 `traction_elevator`、`hydraulic_elevator`、`escalator`、`moving_walkway`
+- `status`：设备状态过滤，支持 `normal`、`maintenance`、`fault`、`disabled`
+
+设备详情：
+
+```text
+GET /api/devices/{device_id}
+```
+
+修改设备：
+
+```text
+PUT /api/devices/{device_id}
+```
+
+删除设备：
+
+```text
+DELETE /api/devices/{device_id}
+```
+
+权限说明：
+
+- `admin`：可以新增、查询、修改、删除设备。
+- `auditor`：可以新增、查询、修改设备。
+- `worker`：只能查询设备。
