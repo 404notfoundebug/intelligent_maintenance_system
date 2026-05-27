@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from app.api import auth, devices, health, inspections, knowledge, qa, search
+from app.api import auth, devices, health, inspections, knowledge, maintenance, qa, search
 from app.core.config import settings
 
 
@@ -33,6 +33,7 @@ def create_app() -> FastAPI:
     app.include_router(devices.router)
     app.include_router(inspections.router)
     app.include_router(knowledge.router)
+    app.include_router(maintenance.router)
     app.include_router(search.router)
     app.include_router(qa.router)
 

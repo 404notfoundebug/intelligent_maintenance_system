@@ -6,6 +6,7 @@ from app.models.inspection import (
     InspectionTemplateStep,
 )
 from app.models.knowledge import KnowledgeChunk, KnowledgeFile
+from app.models.maintenance import MaintenanceRecord
 from app.models.qa import QARecord
 from app.models.role import Role
 from app.models.user import User
@@ -18,6 +19,7 @@ __all__ = [
     "InspectionTemplateStep",
     "KnowledgeChunk",
     "KnowledgeFile",
+    "MaintenanceRecord",
     "QARecord",
     "Role",
     "User",

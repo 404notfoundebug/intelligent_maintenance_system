@@ -221,6 +221,11 @@ DELETE /api/knowledge/files/{file_id}
 - `PUT /api/inspections/orders/{order_id}/steps/{step_id}`
 - `PUT /api/inspections/orders/{order_id}/complete`
 - `DELETE /api/inspections/orders/{order_id}`
+- `POST /api/maintenance/records/from-order/{order_id}`
+- `GET /api/maintenance/records`
+- `GET /api/maintenance/records/{record_id}`
+- `GET /api/maintenance/records/{record_id}/report`
+- `DELETE /api/maintenance/records/{record_id}`
 - `POST /api/search`
 - `POST /api/qa/repair-advice`
 
@@ -644,3 +649,89 @@ DELETE /api/inspections/orders/{order_id}
 - `admin`：可以管理模板和全部工单。
 - `auditor`：可以创建、修改模板，创建、查看、处理和删除工单。
 - `worker`：只能查看、创建和处理分配给自己的工单，不能管理模板，不能删除工单。
+
+## 维保记录与自检报告接口测试
+
+维保记录模块用于将已完成的点检工单转化为正式维保记录，并生成结构化自检报告正文。当前版本先返回文本内容，为后续 PDF/Word 导出和前端报告展示预留数据基础。
+
+安装依赖：
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+初始化数据库：
+
+```powershell
+python -m app.init_db
+```
+
+启动服务：
+
+```powershell
+uvicorn main:app --reload
+```
+
+打开 Swagger：
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+点击右上角 `Authorize` 登录：
+
+```text
+username: admin
+password: admin123456
+```
+
+确保已有一个 `completed` 状态的点检工单。如果没有，先按顺序完成：
+
+- 创建设备
+- 创建点检模板
+- 创建点检工单
+- start 工单
+- 填写所有工单步骤
+- complete 工单
+
+根据工单生成维保记录：
+
+```text
+POST /api/maintenance/records/from-order/{order_id}
+```
+
+查询维保记录列表：
+
+```text
+GET /api/maintenance/records
+```
+
+支持查询参数：
+
+- `keyword`：按设备名称、设备编号、记录编号模糊查询
+- `device_id`：按设备过滤
+- `inspection_type`：按点检类型过滤
+
+查看维保记录详情：
+
+```text
+GET /api/maintenance/records/{record_id}
+```
+
+查看自检报告正文：
+
+```text
+GET /api/maintenance/records/{record_id}/report
+```
+
+删除维保记录：
+
+```text
+DELETE /api/maintenance/records/{record_id}
+```
+
+权限说明：
+
+- `admin`：可以生成、查看、删除所有维保记录。
+- `auditor`：可以生成和查看所有维保记录。
+- `worker`：只能生成和查看分配给自己的工单对应的维保记录。
