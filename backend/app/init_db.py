@@ -8,6 +8,8 @@ from app.core.database import Base, engine
 from app.core.security import get_password_hash
 from app.models import (
     Device,
+    FaultImage,
+    FaultReport,
     InspectionOrder,
     InspectionOrderStep,
     InspectionTemplate,

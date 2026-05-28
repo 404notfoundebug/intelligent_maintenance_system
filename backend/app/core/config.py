@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     llm_base_url: str | None = Field(default=None, alias="LLM_BASE_URL")
     llm_model: str | None = Field(default=None, alias="LLM_MODEL")
 
+    vision_api_key: str | None = Field(default=None, alias="VISION_API_KEY")
+    vision_base_url: str | None = Field(default=None, alias="VISION_BASE_URL")
+    vision_model: str | None = Field(default=None, alias="VISION_MODEL")
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -226,6 +226,14 @@ DELETE /api/knowledge/files/{file_id}
 - `GET /api/maintenance/records/{record_id}`
 - `GET /api/maintenance/records/{record_id}/report`
 - `DELETE /api/maintenance/records/{record_id}`
+- `POST /api/faults`
+- `POST /api/faults/{fault_id}/images`
+- `GET /api/faults`
+- `GET /api/faults/{fault_id}`
+- `PUT /api/faults/{fault_id}/status`
+- `POST /api/faults/{fault_id}/images/{image_id}/analyze`
+- `POST /api/faults/{fault_id}/repair-advice`
+- `DELETE /api/faults/{fault_id}`
 - `POST /api/search`
 - `POST /api/qa/repair-advice`
 
@@ -735,3 +743,122 @@ DELETE /api/maintenance/records/{record_id}
 - `admin`：可以生成、查看、删除所有维保记录。
 - `auditor`：可以生成和查看所有维保记录。
 - `worker`：只能生成和查看分配给自己的工单对应的维保记录。
+
+## 故障上报与图片识别接口测试
+
+故障上报模块用于记录现场故障现象、上传故障图片，并通过 OpenAI 兼容的视觉大模型识别图片中的故障码、部件状态和可见异常。图片识别结果可以与文字故障描述一起进入 RAG 检修建议生成流程。
+
+安装依赖：
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+初始化数据库：
+
+```powershell
+python -m app.init_db
+```
+
+配置 `.env`：
+
+```env
+VISION_API_KEY=你的视觉模型API Key
+VISION_BASE_URL=你的视觉模型OpenAI兼容地址
+VISION_MODEL=你的视觉模型名称
+```
+
+如果 `VISION_API_KEY` 为空，系统会尝试复用 `LLM_API_KEY`。如果视觉模型未配置，故障上报和图片上传仍可正常使用，只有图片识别接口会返回明确配置错误。
+
+启动服务：
+
+```powershell
+uvicorn main:app --reload
+```
+
+打开 Swagger：
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+点击右上角 `Authorize` 登录：
+
+```text
+username: admin
+password: admin123456
+```
+
+创建故障上报：
+
+```text
+POST /api/faults
+```
+
+请求示例：
+
+```json
+{
+  "device_id": 1,
+  "device_name": "1号楼客梯",
+  "device_model": "TX-1000",
+  "fault_description": "电梯停在层站，不关门",
+  "fault_code": "",
+  "location": "1号楼东侧层站"
+}
+```
+
+上传故障图片：
+
+```text
+POST /api/faults/{fault_id}/images
+```
+
+表单参数：
+
+- `file`：图片文件，支持 `jpg`、`jpeg`、`png`、`webp`
+- `image_type`：支持 `fault_code`、`control_cabinet`、`door_system`、`escalator_part`、`other`
+
+查看故障详情：
+
+```text
+GET /api/faults/{fault_id}
+```
+
+识别故障图片：
+
+```text
+POST /api/faults/{fault_id}/images/{image_id}/analyze
+```
+
+基于故障记录生成检修建议：
+
+```text
+POST /api/faults/{fault_id}/repair-advice
+```
+
+更新故障状态：
+
+```text
+PUT /api/faults/{fault_id}/status
+```
+
+请求示例：
+
+```json
+{
+  "status": "processing"
+}
+```
+
+删除故障记录：
+
+```text
+DELETE /api/faults/{fault_id}
+```
+
+权限说明：
+
+- `admin`：可以创建、查看、上传图片、识别图片、生成建议、更新状态和删除所有故障记录。
+- `auditor`：可以创建、查看、上传图片、识别图片、生成建议和更新状态。
+- `worker`：只能查看和操作自己提交的故障记录，不能删除故障记录。
