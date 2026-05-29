@@ -1,12 +1,13 @@
 import sys
 
-from sqlalchemy import select
+from sqlalchemy import inspect, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.database import Base, engine
 from app.core.security import get_password_hash
 from app.models import (
+    CaseAuditRecord,
     Device,
     FaultImage,
     FaultReport,
@@ -16,6 +17,7 @@ from app.models import (
     InspectionTemplateStep,
     MaintenanceRecord,
     Role,
+    RepairCase,
     User,
 )
 
@@ -31,6 +33,22 @@ DEFAULT_ADMIN = {
     "password": "admin123456",
     "real_name": "系统管理员",
 }
+
+
+def ensure_knowledge_chunk_file_id_nullable() -> None:
+    inspector = inspect(engine)
+    columns = inspector.get_columns("knowledge_chunks")
+    file_id_column = next((column for column in columns if column["name"] == "file_id"), None)
+    if file_id_column is None or file_id_column.get("nullable"):
+        return
+
+    if engine.dialect.name != "mysql":
+        print("璺宠繃 knowledge_chunks.file_id 鍙┖杩佺Щ锛氬綋鍓嶉潪 MySQL 鏁版嵁搴?")
+        return
+
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE knowledge_chunks MODIFY COLUMN file_id INT NULL"))
+    print("宸插皢 knowledge_chunks.file_id 璋冩暣涓哄彲绌猴紝鐢ㄤ簬妫€淇渚嬪叆搴?")
 
 
 def init_roles(db: Session) -> dict[str, Role]:
@@ -72,6 +90,7 @@ def init_database() -> None:
 
     try:
         Base.metadata.create_all(bind=engine)
+        ensure_knowledge_chunk_file_id_nullable()
         with Session(engine) as db:
             roles = init_roles(db)
             init_default_admin(db, roles["admin"])

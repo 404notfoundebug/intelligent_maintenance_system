@@ -28,7 +28,7 @@ class SearchRequest(BaseModel):
 
 class SearchResultItem(BaseModel):
     chunk_id: int
-    file_id: int
+    file_id: int | None = None
     source_file_name: str
     document_type: str
     chunk_index: int

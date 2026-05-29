@@ -234,6 +234,13 @@ DELETE /api/knowledge/files/{file_id}
 - `POST /api/faults/{fault_id}/images/{image_id}/analyze`
 - `POST /api/faults/{fault_id}/repair-advice`
 - `DELETE /api/faults/{fault_id}`
+- `POST /api/cases`
+- `GET /api/cases`
+- `GET /api/cases/{case_id}`
+- `PUT /api/cases/{case_id}`
+- `POST /api/cases/{case_id}/audit`
+- `DELETE /api/cases/{case_id}`
+- `GET /api/cases/{case_id}/audit-records`
 - `POST /api/search`
 - `POST /api/qa/repair-advice`
 
@@ -862,3 +869,119 @@ DELETE /api/faults/{fault_id}
 - `admin`：可以创建、查看、上传图片、识别图片、生成建议、更新状态和删除所有故障记录。
 - `auditor`：可以创建、查看、上传图片、识别图片、生成建议和更新状态。
 - `worker`：只能查看和操作自己提交的故障记录，不能删除故障记录。
+
+## 检修案例审核入库接口测试
+
+检修案例模块用于将现场故障处理经验沉淀为结构化案例。案例提交后由管理员或审核员审核，审核通过后会自动写入 `knowledge_chunks`，并可被 `/api/search` 检索，用于后续 RAG 检修建议生成。
+
+安装依赖：
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+初始化数据库：
+
+```powershell
+python -m app.init_db
+```
+
+启动服务：
+
+```powershell
+uvicorn main:app --reload
+```
+
+打开 Swagger：
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+点击右上角 `Authorize` 登录：
+
+```text
+username: admin
+password: admin123456
+```
+
+提交检修案例：
+
+```text
+POST /api/cases
+```
+
+请求示例：
+
+```json
+{
+  "device_id": 1,
+  "fault_report_id": 3,
+  "maintenance_record_id": 1,
+  "title": "电梯停在层站不关门故障处理案例",
+  "device_name": "1号楼客梯",
+  "device_type": "traction_elevator",
+  "fault_description": "电梯停在层站，不关门",
+  "fault_reason": "门锁回路接触不良，控制柜显示门锁相关异常",
+  "repair_process": "检查门区安全状态，排查光幕、门机控制器和门锁触点，重新紧固门锁接线并复测运行状态。",
+  "repair_result": "处理后电梯开关门恢复正常，连续运行测试未复现故障。",
+  "tools_used": "万用表、绝缘手套、螺丝刀",
+  "safety_notes": "检修前应设置警示标识，确认电梯处于安全检修状态。"
+}
+```
+
+查询案例列表：
+
+```text
+GET /api/cases
+```
+
+查看案例详情：
+
+```text
+GET /api/cases/{case_id}
+```
+
+审核通过案例：
+
+```text
+POST /api/cases/{case_id}/audit
+```
+
+请求示例：
+
+```json
+{
+  "action": "approve",
+  "comment": "审核通过"
+}
+```
+
+查看审核记录：
+
+```text
+GET /api/cases/{case_id}/audit-records
+```
+
+测试知识库检索：
+
+```text
+POST /api/search
+```
+
+请求示例：
+
+```json
+{
+  "query": "电梯停在层站不关门",
+  "top_k": 5
+}
+```
+
+审核通过后，检索结果中应能看到刚刚入库的检修案例内容。
+
+权限说明：
+
+- `admin`：可以提交、查看、修改、审核和删除所有案例。
+- `auditor`：可以提交、查看、修改和审核所有案例。
+- `worker`：只能提交、查看和修改自己提交且未审核通过的案例，不能审核和删除案例。

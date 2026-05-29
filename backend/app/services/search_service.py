@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass
 
 import jieba
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models.knowledge import KnowledgeChunk, KnowledgeFile
@@ -20,7 +20,7 @@ DOCUMENT_TYPE_WEIGHTS = {
 @dataclass
 class SearchResult:
     chunk_id: int
-    file_id: int
+    file_id: int | None
     source_file_name: str
     document_type: str
     chunk_index: int
@@ -127,11 +127,14 @@ class SearchService:
 
         stmt = (
             select(KnowledgeChunk, KnowledgeFile)
-            .join(KnowledgeFile, KnowledgeChunk.file_id == KnowledgeFile.id)
-            .order_by(KnowledgeFile.created_at.desc(), KnowledgeChunk.chunk_index.asc())
+            .outerjoin(KnowledgeFile, KnowledgeChunk.file_id == KnowledgeFile.id)
+            .order_by(KnowledgeChunk.created_at.desc(), KnowledgeChunk.chunk_index.asc())
         )
         if document_type:
-            stmt = stmt.where(KnowledgeFile.document_type == document_type)
+            if document_type == "fault_case":
+                stmt = stmt.where(or_(KnowledgeFile.document_type == document_type, KnowledgeChunk.file_id.is_(None)))
+            else:
+                stmt = stmt.where(KnowledgeFile.document_type == document_type)
         if file_id:
             stmt = stmt.where(KnowledgeChunk.file_id == file_id)
 
@@ -142,7 +145,7 @@ class SearchService:
                 query_keywords=query_keywords,
                 title=chunk.title,
                 content=chunk.content,
-                document_type=knowledge_file.document_type,
+                document_type=knowledge_file.document_type if knowledge_file else "fault_case",
             )
             if score <= 0:
                 continue
@@ -150,8 +153,8 @@ class SearchService:
                 SearchResult(
                     chunk_id=chunk.id,
                     file_id=chunk.file_id,
-                    source_file_name=knowledge_file.original_filename,
-                    document_type=knowledge_file.document_type,
+                    source_file_name=knowledge_file.original_filename if knowledge_file else "repair_case",
+                    document_type=knowledge_file.document_type if knowledge_file else "fault_case",
                     chunk_index=chunk.chunk_index,
                     title=chunk.title,
                     content=chunk.content,

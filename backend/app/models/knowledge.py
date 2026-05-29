@@ -38,9 +38,9 @@ class KnowledgeChunk(Base):
     __tablename__ = "knowledge_chunks"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    file_id: Mapped[int] = mapped_column(
+    file_id: Mapped[int | None] = mapped_column(
         ForeignKey("knowledge_files.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -55,4 +55,4 @@ class KnowledgeChunk(Base):
         nullable=False,
     )
 
-    file: Mapped[KnowledgeFile] = relationship(back_populates="chunks")
+    file: Mapped[KnowledgeFile | None] = relationship(back_populates="chunks")
