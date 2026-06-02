@@ -1,10 +1,14 @@
 import request from './request'
 
+export function getInspectionTemplates(params) {
+  return request.get('/api/inspections/templates', { params })
+}
+
 export function getInspectionOrders(params) {
   return request.get('/api/inspections/orders', { params })
 }
 
-export function getInspectionOrder(id) {
+export function getInspectionOrderDetail(id) {
   return request.get(`/api/inspections/orders/${id}`)
 }
 
@@ -29,3 +33,9 @@ export function uploadInspectionStepPhoto(orderId, stepId, data) {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
 }
+
+export function deleteInspectionOrder(id) {
+  return request.delete(`/api/inspections/orders/${id}`)
+}
+
+export const getInspectionOrder = getInspectionOrderDetail
