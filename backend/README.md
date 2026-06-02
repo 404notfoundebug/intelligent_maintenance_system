@@ -253,6 +253,16 @@ DELETE /api/knowledge/files/{file_id}
 - `GET /api/dashboard/monthly-trend`
 - `GET /api/files/view`
 - `GET /api/files/download`
+- `POST /api/users`
+- `GET /api/users`
+- `GET /api/users/{user_id}`
+- `PUT /api/users/{user_id}`
+- `PUT /api/users/{user_id}/role`
+- `PUT /api/users/{user_id}/status`
+- `PUT /api/users/{user_id}/reset-password`
+- `PUT /api/users/me/password`
+- `GET /api/users/me/profile`
+- `GET /api/users/roles`
 - `POST /api/search`
 - `POST /api/qa/repair-advice`
 
@@ -1171,3 +1181,161 @@ GET /api/files/download?path=返回的photo_path
 - `admin`、`auditor`：可以上传所有点检工单步骤照片。
 - `worker`：只能上传分配给自己的工单步骤照片。
 - 文件访问接口第一版允许所有登录用户访问 `UPLOAD_DIR` 下的安全路径文件。
+
+## 用户管理与权限管理接口测试
+
+用户管理模块用于管理员维护系统账号，包括新增用户、查询用户、修改用户信息、修改角色、启用/禁用账号和重置密码。普通登录用户可以查看个人资料并修改自己的密码。
+
+安装依赖：
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+初始化数据库：
+
+```powershell
+python -m app.init_db
+```
+
+启动服务：
+
+```powershell
+uvicorn main:app --reload
+```
+
+打开 Swagger：
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+点击右上角 `Authorize` 登录：
+
+```text
+username: admin
+password: admin123456
+```
+
+查询角色：
+
+```text
+GET /api/users/roles
+```
+
+新增维保人员：
+
+```text
+POST /api/users
+```
+
+请求示例：
+
+```json
+{
+  "username": "worker01",
+  "password": "123456",
+  "real_name": "维保人员张三",
+  "phone": "13800000000",
+  "email": "worker01@example.com",
+  "role": "worker",
+  "is_active": true
+}
+```
+
+查询用户列表：
+
+```text
+GET /api/users
+```
+
+查看用户详情：
+
+```text
+GET /api/users/{user_id}
+```
+
+修改用户信息：
+
+```text
+PUT /api/users/{user_id}
+```
+
+请求示例：
+
+```json
+{
+  "real_name": "维保人员李四",
+  "phone": "13900000000",
+  "email": "worker02@example.com"
+}
+```
+
+修改用户角色：
+
+```text
+PUT /api/users/{user_id}/role
+```
+
+请求示例：
+
+```json
+{
+  "role": "auditor"
+}
+```
+
+禁用/启用用户：
+
+```text
+PUT /api/users/{user_id}/status
+```
+
+请求示例：
+
+```json
+{
+  "is_active": false
+}
+```
+
+重置用户密码：
+
+```text
+PUT /api/users/{user_id}/reset-password
+```
+
+请求示例：
+
+```json
+{
+  "new_password": "123456"
+}
+```
+
+当前用户查看个人资料：
+
+```text
+GET /api/users/me/profile
+```
+
+当前用户修改自己的密码：
+
+```text
+PUT /api/users/me/password
+```
+
+请求示例：
+
+```json
+{
+  "old_password": "admin123456",
+  "new_password": "newpassword123"
+}
+```
+
+权限说明：
+
+- `admin`：拥有全部用户管理权限。
+- `worker`、`auditor`：只能查看和修改自己的基本信息，不能创建用户、修改角色、修改状态或重置他人密码。
+- 系统禁止 admin 禁用自己，也禁止 admin 将自己的角色改为非 admin。
