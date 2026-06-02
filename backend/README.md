@@ -219,6 +219,7 @@ DELETE /api/knowledge/files/{file_id}
 - `GET /api/inspections/orders/{order_id}`
 - `PUT /api/inspections/orders/{order_id}/start`
 - `PUT /api/inspections/orders/{order_id}/steps/{step_id}`
+- `POST /api/inspections/orders/{order_id}/steps/{step_id}/photo`
 - `PUT /api/inspections/orders/{order_id}/complete`
 - `DELETE /api/inspections/orders/{order_id}`
 - `POST /api/maintenance/records/from-order/{order_id}`
@@ -250,6 +251,8 @@ DELETE /api/knowledge/files/{file_id}
 - `GET /api/dashboard/recent-orders`
 - `GET /api/dashboard/recent-maintenance-records`
 - `GET /api/dashboard/monthly-trend`
+- `GET /api/files/view`
+- `GET /api/files/download`
 - `POST /api/search`
 - `POST /api/qa/repair-advice`
 
@@ -1078,3 +1081,93 @@ GET /api/dashboard/monthly-trend
 
 - `admin`、`auditor`：可以查看全部统计数据。
 - `worker`：仅查看与自己相关的数据，包括自己提交的故障、分配给自己的点检工单、相关维保记录和自己提交的检修案例。
+
+## 文件访问与点检照片上传测试
+
+文件访问模块用于给前端提供上传文件预览和下载能力，并支持在点检工单步骤中上传现场照片。所有文件访问路径都会限制在 `.env` 中配置的 `UPLOAD_DIR` 下，防止路径穿越。
+
+安装依赖：
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+初始化数据库：
+
+```powershell
+python -m app.init_db
+```
+
+启动服务：
+
+```powershell
+uvicorn main:app --reload
+```
+
+打开 Swagger：
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+点击右上角 `Authorize` 登录：
+
+```text
+username: admin
+password: admin123456
+```
+
+确保已有一个点检工单和工单步骤：
+
+```text
+GET /api/inspections/orders/{order_id}
+```
+
+上传点检步骤照片：
+
+```text
+POST /api/inspections/orders/{order_id}/steps/{step_id}/photo
+```
+
+请求参数：
+
+- `file`：图片文件，支持 `jpg`、`jpeg`、`png`、`webp`
+
+返回示例：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "order_id": 1,
+    "step_id": 1,
+    "photo_path": "inspections/1/uuid_xxx.jpg",
+    "photo_url": "/api/files/view?path=inspections/1/uuid_xxx.jpg"
+  }
+}
+```
+
+查看工单详情，确认 `step.photo_path` 已更新：
+
+```text
+GET /api/inspections/orders/{order_id}
+```
+
+预览图片：
+
+```text
+GET /api/files/view?path=返回的photo_path
+```
+
+下载图片：
+
+```text
+GET /api/files/download?path=返回的photo_path
+```
+
+权限说明：
+
+- `admin`、`auditor`：可以上传所有点检工单步骤照片。
+- `worker`：只能上传分配给自己的工单步骤照片。
+- 文件访问接口第一版允许所有登录用户访问 `UPLOAD_DIR` 下的安全路径文件。

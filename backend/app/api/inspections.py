@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -214,6 +214,27 @@ def update_order_step(
     try:
         step = InspectionService.update_order_step(db, order_id, step_id, payload, current_user)
         return success(data=InspectionService.order_step_to_dict(step))
+    except Exception as exc:
+        raise_service_error(exc)
+
+
+@router.post("/orders/{order_id}/steps/{step_id}/photo", response_model=InspectionResponse)
+def upload_order_step_photo(
+    order_id: int,
+    step_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    try:
+        data = InspectionService.upload_step_photo(
+            db=db,
+            order_id=order_id,
+            step_id=step_id,
+            file=file,
+            current_user=current_user,
+        )
+        return success(data=data)
     except Exception as exc:
         raise_service_error(exc)
 

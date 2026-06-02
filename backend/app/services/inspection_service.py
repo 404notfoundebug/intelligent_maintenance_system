@@ -1,6 +1,8 @@
 from datetime import datetime
+from pathlib import Path
 from random import randint
 
+from fastapi import UploadFile
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
@@ -19,6 +21,7 @@ from app.schemas.inspection import (
     InspectionTemplateCreate,
     InspectionTemplateUpdate,
 )
+from app.services.file_service import FileService
 
 
 class InspectionService:
@@ -413,6 +416,54 @@ class InspectionService:
         except SQLAlchemyError:
             db.rollback()
             raise
+
+    @staticmethod
+    def upload_step_photo(
+        db: Session,
+        order_id: int,
+        step_id: int,
+        file: UploadFile,
+        current_user: User,
+    ) -> dict:
+        order = InspectionService.get_order(db, order_id, current_user)
+        if order is None:
+            raise LookupError("点检工单不存在")
+
+        step = db.scalar(
+            select(InspectionOrderStep).where(
+                InspectionOrderStep.id == step_id,
+                InspectionOrderStep.order_id == order_id,
+            )
+        )
+        if step is None:
+            raise LookupError("点检步骤不存在")
+
+        relative_path, file_size, file_type = FileService.save_uploaded_image(
+            file=file,
+            sub_dir=f"inspections/{order_id}",
+        )
+        step.photo_path = relative_path
+        try:
+            db.commit()
+            db.refresh(step)
+        except SQLAlchemyError:
+            db.rollback()
+            saved_path = FileService.upload_root() / Path(relative_path)
+            try:
+                if saved_path.exists() and saved_path.is_file():
+                    saved_path.unlink()
+            except OSError:
+                pass
+            raise
+
+        return {
+            "order_id": order_id,
+            "step_id": step_id,
+            "photo_path": relative_path,
+            "photo_url": FileService.build_file_url(relative_path),
+            "file_size": file_size,
+            "file_type": file_type,
+        }
 
     @staticmethod
     def complete_order(db: Session, order_id: int, current_user: User) -> InspectionOrder:
