@@ -241,6 +241,15 @@ DELETE /api/knowledge/files/{file_id}
 - `POST /api/cases/{case_id}/audit`
 - `DELETE /api/cases/{case_id}`
 - `GET /api/cases/{case_id}/audit-records`
+- `GET /api/dashboard/summary`
+- `GET /api/dashboard/device-status`
+- `GET /api/dashboard/fault-status`
+- `GET /api/dashboard/order-status`
+- `GET /api/dashboard/case-status`
+- `GET /api/dashboard/recent-faults`
+- `GET /api/dashboard/recent-orders`
+- `GET /api/dashboard/recent-maintenance-records`
+- `GET /api/dashboard/monthly-trend`
 - `POST /api/search`
 - `POST /api/qa/repair-advice`
 
@@ -985,3 +994,87 @@ POST /api/search
 - `admin`：可以提交、查看、修改、审核和删除所有案例。
 - `auditor`：可以提交、查看、修改和审核所有案例。
 - `worker`：只能提交、查看和修改自己提交且未审核通过的案例，不能审核和删除案例。
+
+## Dashboard首页统计接口测试
+
+Dashboard 模块用于给前端首页提供设备、故障、点检工单、维保记录、知识库和检修案例的运行概览。该模块不新增业务表，只从已有数据表中做轻量统计。
+
+安装依赖：
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+初始化数据库：
+
+```powershell
+python -m app.init_db
+```
+
+启动服务：
+
+```powershell
+uvicorn main:app --reload
+```
+
+打开 Swagger：
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+点击右上角 `Authorize` 登录：
+
+```text
+username: admin
+password: admin123456
+```
+
+测试首页综合统计：
+
+```text
+GET /api/dashboard/summary
+```
+
+测试设备状态统计：
+
+```text
+GET /api/dashboard/device-status
+```
+
+测试故障状态统计：
+
+```text
+GET /api/dashboard/fault-status
+```
+
+测试工单状态统计：
+
+```text
+GET /api/dashboard/order-status
+```
+
+测试案例状态统计：
+
+```text
+GET /api/dashboard/case-status
+```
+
+测试最近数据：
+
+```text
+GET /api/dashboard/recent-faults
+GET /api/dashboard/recent-orders
+GET /api/dashboard/recent-maintenance-records
+```
+
+测试趋势数据：
+
+```text
+GET /api/dashboard/monthly-trend
+```
+
+权限说明：
+
+- `admin`、`auditor`：可以查看全部统计数据。
+- `worker`：仅查看与自己相关的数据，包括自己提交的故障、分配给自己的点检工单、相关维保记录和自己提交的检修案例。
