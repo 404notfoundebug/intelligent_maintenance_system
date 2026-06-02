@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import auth, cases, dashboard, devices, faults, files, health, inspections, knowledge, maintenance, qa, search, users
@@ -11,6 +12,17 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         description="面向电梯扶梯维保场景的多模态知识检索与标准化作业辅助系统",
         version="0.1.0",
+    )
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://127.0.0.1:5173",
+            "http://localhost:5173",
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     @app.exception_handler(HTTPException)
