@@ -67,6 +67,10 @@ class MaintenanceService:
             "abnormal_items": record.abnormal_items,
             "not_applicable_items": record.not_applicable_items,
             "conclusion": record.conclusion,
+            "audit_status": record.audit_status,
+            "auditor_id": record.auditor_id,
+            "audit_time": record.audit_time,
+            "reject_reason": record.reject_reason,
             "generated_by": record.generated_by,
             "created_at": record.created_at,
             "updated_at": record.updated_at,
@@ -309,6 +313,37 @@ class MaintenanceService:
         try:
             db.delete(record)
             db.commit()
+        except SQLAlchemyError:
+            db.rollback()
+            raise
+
+    @staticmethod
+    def audit_record(
+        db: Session,
+        record_id: int,
+        status: str,
+        current_user: User,
+        reject_reason: str | None = None,
+    ) -> MaintenanceRecord:
+        record = db.get(MaintenanceRecord, record_id)
+        if record is None:
+            raise LookupError("维保记录不存在")
+        if status not in ("approved", "rejected"):
+            raise ValueError("审核状态无效，必须为 approved 或 rejected")
+        if status == "rejected" and not reject_reason:
+            raise ValueError("驳回时必须提供驳回原因")
+        if record.audit_status != "pending":
+            raise ValueError("该记录已审核，无法重复操作")
+
+        record.audit_status = status
+        record.auditor_id = current_user.id
+        record.audit_time = datetime.utcnow()
+        record.reject_reason = reject_reason if status == "rejected" else None
+
+        try:
+            db.commit()
+            db.refresh(record)
+            return record
         except SQLAlchemyError:
             db.rollback()
             raise

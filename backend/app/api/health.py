@@ -9,7 +9,7 @@ router = APIRouter(prefix="/api/health", tags=["health"])
 @router.get("")
 def health_check():
     return {
-        "code": 0,
+        "code": 200,
         "message": "service is running",
         "data": {
             "app_name": settings.app_name,
@@ -23,7 +23,7 @@ def health_check():
 def database_health_check():
     ok, message = check_database_connection()
     return {
-        "code": 0 if ok else 1,
+        "code": 200 if ok else 500,
         "message": message,
         "data": {
             "database": "ok" if ok else "error",

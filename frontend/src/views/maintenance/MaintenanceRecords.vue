@@ -176,8 +176,8 @@
       </div>
       <template #footer>
         <el-button :disabled="!reportData?.report_content" @click="copyReport">复制报告</el-button>
-        <el-button disabled @click="showExportTip">导出PDF</el-button>
-        <el-button disabled @click="showExportTip">导出Word</el-button>
+        <el-button :disabled="!reportData?.report_content" @click="exportPDF">导出PDF</el-button>
+        <el-button :disabled="!reportData?.report_content" @click="exportWord">导出Word</el-button>
         <el-button type="primary" @click="reportDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
@@ -442,6 +442,84 @@ async function copyReport() {
 
 function showExportTip() {
   ElMessage.info('导出功能后续开发')
+}
+
+function exportPDF() {
+  const content = reportData.value?.report_content
+  if (!content) return
+
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) {
+    ElMessage.error('请允许浏览器弹出窗口以导出PDF')
+    return
+  }
+
+  const recordNo = reportData.value?.record_no || '维保报告'
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8" />
+      <title>${recordNo}</title>
+      <style>
+        body { font-family: "Microsoft YaHei", "SimSun", sans-serif; padding: 40px 50px; line-height: 1.8; color: #333; }
+        h1 { text-align: center; font-size: 22px; margin-bottom: 10px; }
+        .meta { text-align: center; color: #666; font-size: 13px; margin-bottom: 24px; border-bottom: 1px solid #ddd; padding-bottom: 12px; }
+        .content { white-space: pre-wrap; word-break: break-word; font-size: 14px; }
+        @media print { body { padding: 20px 30px; } }
+      </style>
+    </head>
+    <body>
+      <h1>电梯/扶梯维保自检报告</h1>
+      <div class="meta">记录编号：${recordNo}</div>
+      <div class="content">${content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}</div>
+    </body>
+    </html>
+  `)
+  printWindow.document.close()
+  printWindow.focus()
+  setTimeout(() => {
+    printWindow.print()
+  }, 500)
+}
+
+function exportWord() {
+  const content = reportData.value?.report_content
+  if (!content) return
+
+  const recordNo = reportData.value?.record_no || '维保报告'
+  const htmlContent = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office"
+          xmlns:w="urn:schemas-microsoft-com:office:word"
+          xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+      <meta charset="utf-8" />
+      <title>${recordNo}</title>
+      <style>
+        body { font-family: "Microsoft YaHei", "SimSun", sans-serif; padding: 30px; line-height: 1.8; }
+        h1 { text-align: center; font-size: 20px; }
+        .meta { text-align: center; color: #666; font-size: 12px; margin-bottom: 20px; }
+        .content { white-space: pre-wrap; font-size: 14px; }
+      </style>
+    </head>
+    <body>
+      <h1>电梯/扶梯维保自检报告</h1>
+      <div class="meta">记录编号：${recordNo}</div>
+      <div class="content">${content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+    </body>
+    </html>
+  `
+
+  const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/msword;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${recordNo}.doc`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  ElMessage.success('Word 文档已下载')
 }
 
 onMounted(() => {

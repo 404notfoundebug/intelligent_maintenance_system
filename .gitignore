@@ -43,6 +43,7 @@ logs/
 # VSCode配置
 # =========================
 .vscode/
+.workbuddy
 
 # =========================
 # Windows和macOS系统文件

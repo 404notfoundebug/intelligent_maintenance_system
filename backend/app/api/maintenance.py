@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -7,6 +8,7 @@ from app.core.database import get_db
 from app.models.user import User
 from app.schemas.maintenance import MaintenanceResponse
 from app.services.maintenance_service import MaintenanceService
+from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/api/maintenance", tags=["maintenance"])
 
@@ -116,5 +118,33 @@ def delete_record(
     try:
         MaintenanceService.delete_record(db, record_id)
         return success(data={"record_id": record_id}, message="删除成功")
+    except Exception as exc:
+        raise_service_error(exc)
+
+
+class AuditRequest(BaseModel):
+    status: str
+    reject_reason: str | None = None
+
+
+@router.put("/records/{record_id}/audit", response_model=MaintenanceResponse)
+def audit_record(
+    record_id: int,
+    payload: AuditRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    try:
+        record = MaintenanceService.audit_record(
+            db, record_id, payload.status, current_user,
+            reject_reason=payload.reject_reason,
+        )
+        AuditService.write(
+            db, payload.status, "维保审核", "maintenance_record",
+            target_id=record.id, target_name=record.record_no,
+            detail=f"维保记录审核{payload.status}" + (f"，驳回原因：{payload.reject_reason}" if payload.reject_reason else ""),
+            operator=current_user,
+        )
+        return success(data=MaintenanceService.to_dict(record), message="审核完成")
     except Exception as exc:
         raise_service_error(exc)

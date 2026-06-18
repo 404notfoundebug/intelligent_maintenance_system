@@ -2,10 +2,12 @@
   <div class="page inspection-page">
     <div class="page-header">
       <div>
-        <h1>点检工单</h1>
+        <h1>所有工单监控</h1>
         <p>管理电梯/扶梯点检工单，支持工单创建、状态流转、步骤结果填写和现场照片留痕。</p>
       </div>
-      <el-button type="primary" @click="openCreateDialog">创建工单</el-button>
+      <div class="header-actions">
+        <el-button type="primary" @click="openCreateDialog">创建工单</el-button>
+      </div>
     </div>
 
     <el-card class="filter-card" shadow="never">
@@ -163,8 +165,20 @@
         <el-form-item label="工单名称" prop="order_name">
           <el-input v-model.trim="createForm.order_name" placeholder="请输入工单名称" />
         </el-form-item>
-        <el-form-item label="指派人员">
-          <el-input-number v-model="createForm.assigned_to" :min="1" controls-position="right" />
+        <el-form-item label="指派工人" prop="assigned_to">
+          <el-select
+            v-model="createForm.assigned_to"
+            filterable
+            placeholder="请选择维修工人"
+            :loading="optionLoading"
+          >
+            <el-option
+              v-for="worker in workerOptions"
+              :key="worker.id"
+              :label="worker.real_name ? `${worker.real_name}（${worker.username}）` : worker.username"
+              :value="worker.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="备注">
           <el-input
@@ -243,7 +257,7 @@
                   >
                     查看照片
                   </el-button>
-                  <span v-else>-</span>
+                  <span v-else>—</span>
                 </template>
               </el-table-column>
               <el-table-column prop="checked_by" label="检查人" width="90">
@@ -346,6 +360,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '../../stores/user'
 import { getDeviceList } from '../../api/devices'
+import { getWorkers } from '../../api/users'
 import { fetchFileBlob } from '../../api/files'
 import {
   completeInspectionOrder,
@@ -404,6 +419,7 @@ const optionLoading = ref(false)
 const createFormRef = ref(null)
 const deviceOptions = ref([])
 const templateOptions = ref([])
+const workerOptions = ref([])
 const detailDrawerVisible = ref(false)
 const detailLoading = ref(false)
 const detailData = ref(null)
@@ -422,7 +438,8 @@ const createForm = reactive(defaultCreateForm())
 const createRules = {
   device_id: [{ required: true, message: '请选择设备', trigger: 'change' }],
   template_id: [{ required: true, message: '请选择点检模板', trigger: 'change' }],
-  order_name: [{ required: true, message: '请输入工单名称', trigger: 'blur' }]
+  order_name: [{ required: true, message: '请输入工单名称', trigger: 'blur' }],
+  assigned_to: [{ required: true, message: '请选择维修工人', trigger: 'change' }]
 }
 
 const stepForm = reactive({
@@ -440,7 +457,7 @@ function defaultCreateForm() {
     device_id: null,
     template_id: null,
     order_name: '',
-    assigned_to: userStore.userInfo?.id || null,
+    assigned_to: null,
     remark: ''
   }
 }
@@ -451,11 +468,11 @@ function resetCreateForm() {
 }
 
 function displayValue(value) {
-  return value === 0 ? 0 : value || '-'
+  return value === 0 ? 0 : value || '—'
 }
 
 function formatDate(value) {
-  if (!value) return '-'
+  if (!value) return '—'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleString()
@@ -466,7 +483,7 @@ function getOptionItem(options, value) {
 }
 
 function getOrderStatusLabel(value) {
-  return getOptionItem(orderStatusOptions, value)?.label || value || '-'
+  return getOptionItem(orderStatusOptions, value)?.label || value || '—'
 }
 
 function getOrderStatusType(value) {
@@ -474,11 +491,11 @@ function getOrderStatusType(value) {
 }
 
 function getInspectionTypeLabel(value) {
-  return getOptionItem(inspectionTypeOptions, value)?.label || value || '-'
+  return getOptionItem(inspectionTypeOptions, value)?.label || value || '—'
 }
 
 function getStepResultLabel(value) {
-  return getOptionItem(stepResultOptions, value)?.label || value || '-'
+  return getOptionItem(stepResultOptions, value)?.label || value || '—'
 }
 
 function getStepResultType(value) {
@@ -522,15 +539,18 @@ async function fetchOrderList() {
 async function loadCreateOptions() {
   optionLoading.value = true
   try {
-    const [deviceData, templateData] = await Promise.all([
+    const [deviceData, templateData, workerData] = await Promise.all([
       getDeviceList({ page: 1, page_size: 100 }),
-      getInspectionTemplates({ page: 1, page_size: 100, is_active: true })
+      getInspectionTemplates({ page: 1, page_size: 100, is_active: true }),
+      getWorkers()
     ])
     deviceOptions.value = deviceData?.items || []
     templateOptions.value = templateData?.items || []
+    workerOptions.value = workerData?.data || workerData || []
   } catch (error) {
     deviceOptions.value = []
     templateOptions.value = []
+    workerOptions.value = []
   } finally {
     optionLoading.value = false
   }
@@ -623,7 +643,7 @@ async function handleStart(row) {
 async function handleComplete(row) {
   try {
     await ElMessageBox.confirm(
-      `确认完成工单“${row.order_name || row.order_no}”吗？`,
+      `确认完成工单"${row.order_name || row.order_no}"吗？`,
       '完成确认',
       {
         confirmButtonText: '确认完成',
@@ -647,7 +667,7 @@ async function handleComplete(row) {
 async function handleDelete(row) {
   try {
     await ElMessageBox.confirm(
-      `确认删除工单“${row.order_name || row.order_no}”吗？`,
+      `确认删除工单"${row.order_name || row.order_no}"吗？`,
       '删除确认',
       {
         confirmButtonText: '确认删除',
@@ -793,6 +813,12 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .filter-card,

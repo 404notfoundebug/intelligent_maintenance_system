@@ -33,6 +33,12 @@ class MaintenanceRecord(Base):
     not_applicable_items: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     conclusion: Mapped[str] = mapped_column(String(255), nullable=False)
     report_content: Mapped[str] = mapped_column(Text, nullable=False)
+    # 审核字段
+    audit_status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False, index=True)
+    auditor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    audit_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    reject_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # 原有字段
     generated_by: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
@@ -44,4 +50,5 @@ class MaintenanceRecord(Base):
 
     order = relationship("InspectionOrder")
     device = relationship("Device")
-    generator = relationship("User")
+    generator = relationship("User", foreign_keys=[generated_by])
+    auditor = relationship("User", foreign_keys=[auditor_id])

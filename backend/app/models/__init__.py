@@ -1,3 +1,4 @@
+from app.models.audit import AuditLog
 from app.models.case import CaseAuditRecord, RepairCase
 from app.models.device import Device
 from app.models.fault import FaultImage, FaultReport
@@ -14,6 +15,7 @@ from app.models.role import Role
 from app.models.user import User
 
 __all__ = [
+    "AuditLog",
     "Device",
     "CaseAuditRecord",
     "FaultImage",

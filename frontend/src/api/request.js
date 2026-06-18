@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-import { getToken, removeStoredUser, removeToken } from '../utils/auth'
+import { getToken, removeToken } from '../utils/auth'
 
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '',
@@ -40,11 +40,15 @@ request.interceptors.response.use(
       message: error.message
     })
     if (status === 401) {
+      // 先读取 role 再清除，避免读取时已被清空
+      const savedRole = localStorage.getItem('role') || ''
       removeToken()
-      removeStoredUser()
+      localStorage.removeItem('role')
       ElMessage.error('登录已失效，请重新登录')
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
+      if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
+        if (savedRole === 'admin') window.location.href = '/admin/login'
+        else if (savedRole === 'worker') window.location.href = '/worker/login'
+        else window.location.href = '/'
       }
       return Promise.reject(error)
     }

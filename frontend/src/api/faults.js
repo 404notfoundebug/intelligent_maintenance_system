@@ -4,8 +4,20 @@ export function getFaultReports(params) {
   return request.get('/api/faults', { params })
 }
 
+export function getFaultDetail(id) {
+  return request.get(`/api/faults/${id}`)
+}
+
 export function createFaultReport(data) {
   return request.post('/api/faults', data)
+}
+
+export function updateFaultStatus(id, data) {
+  return request.put(`/api/faults/${id}/status`, data)
+}
+
+export function deleteFault(id) {
+  return request.delete(`/api/faults/${id}`)
 }
 
 export function uploadFaultImage(faultId, data) {

@@ -4,6 +4,10 @@ export function login(data) {
   return request.post('/api/auth/login-json', data)
 }
 
+export function getUserInfo() {
+  return request.get('/api/auth/me')
+}
+
 export function getCurrentUser() {
   return request.get('/api/auth/me')
 }

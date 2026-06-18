@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 from pathlib import Path
 from random import randint
 
@@ -22,6 +23,8 @@ from app.schemas.inspection import (
     InspectionTemplateUpdate,
 )
 from app.services.file_service import FileService
+
+logger = logging.getLogger(__name__)
 
 
 class InspectionService:
@@ -453,7 +456,7 @@ class InspectionService:
                 if saved_path.exists() and saved_path.is_file():
                     saved_path.unlink()
             except OSError:
-                pass
+                logger.warning("清理点检照片文件失败: %s", saved_path)
             raise
 
         return {

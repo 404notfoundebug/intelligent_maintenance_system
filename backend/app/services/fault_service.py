@@ -1,4 +1,5 @@
 import shutil
+import logging
 from datetime import datetime
 from pathlib import Path
 from random import randint
@@ -16,6 +17,8 @@ from app.models.user import User
 from app.schemas.fault import FaultReportCreate, FaultReportUpdateStatus, IMAGE_TYPES
 from app.services.qa_service import QAService
 from app.services.vision_client import VisionClient
+
+logger = logging.getLogger(__name__)
 
 
 SUPPORTED_IMAGE_TYPES = {"jpg", "jpeg", "png", "webp"}
@@ -248,7 +251,7 @@ class FaultService:
                 if saved_path.exists() and saved_path.is_file():
                     saved_path.unlink()
             except OSError:
-                pass
+                logger.warning("清理故障图片文件失败: %s", saved_path)
             raise
 
     @staticmethod
@@ -367,4 +370,4 @@ class FaultService:
                 if image_path.exists() and image_path.is_file():
                     image_path.unlink()
             except OSError:
-                pass
+                logger.warning("删除故障图片文件失败: %s", image_path)
