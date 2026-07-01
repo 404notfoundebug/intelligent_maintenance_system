@@ -2,6 +2,48 @@
 
 本项目面向电梯、扶梯日常维保和故障处置场景，建设一个集知识库管理、故障检索、智能检修建议生成、标准化点检与维保记录管理于一体的作业辅助系统。系统目标是帮助维保人员更快定位相关规程、手册和历史案例，生成可追溯、可复核的检修建议，并为后续维保闭环、审核与数据统计提供基础。
 
+## 快速启动概览
+
+克隆项目后，需要分别启动后端和前端。真实密钥和数据库连接只写在 `backend/.env` 中，不要提交到 Git。
+
+后端：
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+copy .env.tidb.example .env
+python -m app.init_db
+uvicorn main:app --reload
+```
+
+前端：
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+默认后端地址：
+
+```text
+http://127.0.0.1:8000
+```
+
+默认前端开发地址：
+
+```text
+http://127.0.0.1:5173
+```
+
+默认管理员账号：
+
+```text
+admin / admin123456
+```
+
 ## 项目目的
 
 电梯和扶梯维保工作具有安全要求高、现场情况复杂、资料分散、经验依赖强等特点。传统维保过程中，工作人员往往需要在检修手册、维保规程、故障案例和历史记录中人工查找资料，效率较低，也不利于标准化管理。
@@ -26,7 +68,7 @@
 当前后端已实现的基础能力包括：
 
 - FastAPI 后端基础框架
-- MySQL + SQLAlchemy 数据库连接
+- TiDB Cloud / MySQL + SQLAlchemy 数据库连接
 - 用户登录与 JWT 认证
 - `admin`、`worker`、`auditor` 三类角色权限
 - 知识库文档上传、解析、文本切分与入库
@@ -59,7 +101,7 @@
 当前项目后端采用轻量、可部署、易扩展的技术路线：
 
 - Web 框架：FastAPI
-- 数据库：MySQL
+- 数据库：MySQL 协议数据库，当前推荐 TiDB Cloud Serverless
 - ORM：SQLAlchemy
 - 认证方式：JWT
 - 文档解析：TXT、PDF、DOCX
@@ -69,6 +111,53 @@
 - HTTP 客户端：httpx
 
 系统暂不使用 `torch`、`faiss`、`chromadb`、`CUDA` 等重依赖，便于在 LoongArch + 银河麒麟等国产化服务器环境中部署。后续可在 `SearchService` 层平滑替换为 embedding 向量检索。
+
+## TiDB Cloud 数据库配置
+
+当前项目推荐使用 TiDB Cloud Serverless 作为云端 SQL 数据库。TiDB 兼容 MySQL 协议，因此后端继续使用：
+
+```text
+SQLAlchemy + PyMySQL + mysql+pymysql://...
+```
+
+首次使用新的 TiDB 数据库时，需要先创建业务库：
+
+```sql
+CREATE DATABASE IF NOT EXISTS intelligent_maintenance
+  DEFAULT CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+```
+
+然后在 `backend/.env` 中配置连接串：
+
+```env
+DATABASE_URL=mysql+pymysql://<tidb_user>:<tidb_password>@<tidb_host>:4000/intelligent_maintenance?charset=utf8mb4&ssl_verify_cert=true&ssl_verify_identity=true
+```
+
+可以从模板复制：
+
+```powershell
+cd backend
+copy .env.tidb.example .env
+```
+
+配置完成后初始化数据库：
+
+```powershell
+python -m app.init_db
+```
+
+初始化脚本会创建业务表、默认角色和默认管理员，并且可以重复执行。更多说明见 [docs/tidb-cloud-setup.md](docs/tidb-cloud-setup.md)。
+
+### 组员连接同一个 TiDB
+
+如果组员要在本地运行后端并连接同一个 TiDB，需要：
+
+1. 使用同一套 `DATABASE_URL`。
+2. 在 TiDB Cloud 的 `Networking` 中允许组员公网 IP。
+3. 或者比赛演示期间临时允许 `0.0.0.0 - 255.255.255.255`。
+
+长期不建议全网开放。比赛结束后建议收紧到后端服务器 IP 或组员固定 IP，并重置数据库密码。
 
 ## 后端目录
 
@@ -103,10 +192,16 @@ pip install -r requirements.txt
 配置 `.env`：
 
 ```env
-DATABASE_URL=mysql+pymysql://root:your_mysql_password@localhost:3306/intelligent_maintenance
+DATABASE_URL=mysql+pymysql://<tidb_user>:<tidb_password>@<tidb_host>:4000/intelligent_maintenance?charset=utf8mb4&ssl_verify_cert=true&ssl_verify_identity=true
 LLM_API_KEY=你的API Key
 LLM_BASE_URL=https://api.deepseek.com/v1
 LLM_MODEL=deepseek-chat
+```
+
+如果使用本地 MySQL，可改为：
+
+```env
+DATABASE_URL=mysql+pymysql://root:your_mysql_password@localhost:3306/intelligent_maintenance?charset=utf8mb4
 ```
 
 初始化数据库：
@@ -145,6 +240,36 @@ password: admin123456
 - `POST /api/search`
 - `POST /api/qa/repair-advice`
 
+## 知识库资料
+
+已整理的公开电梯维保资料位于：
+
+```text
+docs/knowledge_sources/
+```
+
+建议上传分类：
+
+```text
+maintenance_standard_TSG_T5002_2017_elevator_maintenance_regulation.pdf
+-> maintenance_standard
+
+maintenance_standard_DB11_T418_2019_elevator_daily_maintenance.pdf
+-> maintenance_standard
+
+maintenance_standard_special_equipment_elevator_maintenance_safety_management.pdf
+-> maintenance_standard
+
+repair_manual_traction_elevator_maintenance_manual.pdf
+-> repair_manual
+
+repair_manual_elevator_maintenance_instruction.pdf
+-> repair_manual
+
+repair_manual_elevator_general_fault_troubleshooting_course_standard.pdf
+-> repair_manual
+```
+
 ## 后续规划
 
 - 完善设备台账与设备型号管理
@@ -158,3 +283,12 @@ password: admin123456
 ## 安全说明
 
 本系统生成的检修建议仅作为辅助参考。电梯、扶梯检修应由具备资质的维保人员执行，现场作业必须遵守相关安全规范，并结合实际设备状态进行人工复核。
+
+代码仓库安全规则：
+
+- 不要提交真实 `.env`
+- 不要提交数据库密码、TiDB 密码、API Key
+- `.gitignore` 已忽略 `.env`、`.env.*`、`uploads/`、`*.log`、虚拟环境、前端依赖和构建产物
+- 只允许提交 `.env.example`、`.env.tidb.example` 这类无密钥模板
+- 如果 TiDB 密码曾在截图或聊天中暴露，正式演示前应重置密码并更新 `backend/.env`
+- TiDB Networking 不建议长期允许全网访问；比赛结束后应收紧到后端服务器 IP 或组员固定 IP
