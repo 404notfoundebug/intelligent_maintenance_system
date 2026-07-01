@@ -8,7 +8,11 @@
       @mouseleave="sidebarExpanded = false"
     >
       <div class="brand" @click="$router.push('/worker/dashboard')">
-        <div class="brand-mark"></div>
+        <div class="brand-mark">
+          <el-icon>
+            <component is="Tools" />
+          </el-icon>
+        </div>
         <div class="brand-copy">
           <div class="brand-title">梯小维</div>
           <div class="brand-subtitle">现场维保工作台</div>
@@ -152,23 +156,9 @@ function handleLogout() {
   box-shadow: 0 14px 28px rgba(37, 99, 235, 0.24);
 }
 
-.brand-mark::before,
-.brand-mark::after {
-  content: '';
-  position: absolute;
-  top: 10px;
-  bottom: 10px;
-  width: 4px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-}
-
-.brand-mark::before {
-  left: 12px;
-}
-
-.brand-mark::after {
-  right: 12px;
+.brand-mark .el-icon {
+  color: #FFFFFF;
+  font-size: 20px;
 }
 
 .brand-title {
@@ -317,6 +307,7 @@ function handleLogout() {
 .sidebar-logout {
   width: 100%;
   justify-content: center;
+  border-radius: 14px;
   border-color: rgba(16, 185, 129, 0.36);
   background: rgba(16, 185, 129, 0.1);
   color: #D1FAE5;
