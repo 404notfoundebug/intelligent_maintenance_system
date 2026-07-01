@@ -20,11 +20,11 @@ __pycache__/
 # 注意：.env里可能有数据库密码、API Key，不能上传GitHub
 # =========================
 .env
-.env.local
-.env.*.local
+.env.*
 
 # 保留模板文件
 !.env.example
+!.env.*.example
 
 # =========================
 # 上传文件和运行时文件
@@ -43,6 +43,7 @@ logs/
 # VSCode配置
 # =========================
 .vscode/
+.workbuddy
 
 # =========================
 # Windows和macOS系统文件

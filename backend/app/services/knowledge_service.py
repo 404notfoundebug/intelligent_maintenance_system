@@ -1,5 +1,6 @@
 import re
 import shutil
+import logging
 from pathlib import Path
 from uuid import uuid4
 
@@ -10,6 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.knowledge import KnowledgeChunk, KnowledgeFile
+
+logger = logging.getLogger(__name__)
 
 
 SUPPORTED_FILE_TYPES = {"pdf", "txt", "docx"}
@@ -166,7 +169,7 @@ class KnowledgeService:
                 if saved_path.exists() and saved_path.is_file():
                     saved_path.unlink()
             except OSError:
-                pass
+                logger.warning("清理知识文件失败: %s", saved_path)
             raise
 
     @staticmethod

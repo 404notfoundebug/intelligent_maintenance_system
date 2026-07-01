@@ -228,3 +228,109 @@ class UserManagementService:
     @staticmethod
     def get_roles(db: Session) -> list[Role]:
         return list(db.scalars(select(Role).order_by(Role.id.asc())).all())
+
+    @staticmethod
+    def list_workers(db: Session) -> list[User]:
+        """获取所有激活的维修工人"""
+        stmt = (
+            select(User)
+            .options(joinedload(User.role))
+            .join(Role)
+            .where(Role.name == "worker", User.is_active == True)
+            .order_by(User.real_name.asc(), User.id.asc())
+        )
+        return list(db.scalars(stmt).all())
+
+    @staticmethod
+    def delete_user(db: Session, user_id: int) -> None:
+        user = UserManagementService.get_user(db, user_id)
+        if user is None:
+            raise LookupError("用户不存在")
+        try:
+            db.delete(user)
+            db.commit()
+        except SQLAlchemyError:
+            db.rollback()
+            raise
+
+    @staticmethod
+    def update_my_profile(db: Session, current_user: User, payload: UserUpdate) -> User:
+        """更新当前用户的个人信息（不允许修改用户名和角色）"""
+        user = UserManagementService.get_user(db, current_user.id)
+        if user is None:
+            raise LookupError("用户不存在")
+
+        update_data = payload.model_dump(exclude_unset=True)
+        # 普通用户不允许修改用户名
+        update_data.pop("username", None)
+
+        for field, value in update_data.items():
+            setattr(user, field, value)
+
+        try:
+            db.commit()
+            db.refresh(user)
+            return UserManagementService.get_user(db, user.id) or user
+        except IntegrityError as exc:
+            db.rollback()
+            raise ValueError("数据冲突") from exc
+        except SQLAlchemyError:
+            db.rollback()
+            raise
+
+    @staticmethod
+    def create_role(db: Session, name: str, description: str | None = None) -> Role:
+        existing = UserManagementService.get_role_by_name(db, name)
+        if existing:
+            raise ValueError("角色已存在")
+        role = Role(name=name, description=description)
+        try:
+            db.add(role)
+            db.commit()
+            db.refresh(role)
+            return role
+        except IntegrityError as exc:
+            db.rollback()
+            raise ValueError("角色已存在") from exc
+        except SQLAlchemyError:
+            db.rollback()
+            raise
+
+    @staticmethod
+    def update_role(db: Session, role_id: int, name: str | None = None, description: str | None = None) -> Role:
+        role = db.get(Role, role_id)
+        if role is None:
+            raise LookupError("角色不存在")
+        if name is not None and name != role.name:
+            existing = UserManagementService.get_role_by_name(db, name)
+            if existing and existing.id != role_id:
+                raise ValueError("角色名已存在")
+            role.name = name
+        if description is not None:
+            role.description = description
+        try:
+            db.commit()
+            db.refresh(role)
+            return role
+        except IntegrityError as exc:
+            db.rollback()
+            raise ValueError("角色名已存在") from exc
+        except SQLAlchemyError:
+            db.rollback()
+            raise
+
+    @staticmethod
+    def delete_role(db: Session, role_id: int) -> None:
+        role = db.get(Role, role_id)
+        if role is None:
+            raise LookupError("角色不存在")
+        # 检查是否有用户使用该角色
+        user_count = db.scalar(select(func.count()).select_from(User).where(User.role_id == role_id))
+        if user_count and user_count > 0:
+            raise ValueError(f"该角色下还有 {user_count} 个用户，无法删除")
+        try:
+            db.delete(role)
+            db.commit()
+        except SQLAlchemyError:
+            db.rollback()
+            raise

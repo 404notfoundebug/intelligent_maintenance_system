@@ -3,6 +3,8 @@ from collections.abc import Callable
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError
+from pydantic import BaseModel, Field
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -15,6 +17,7 @@ from app.schemas.auth import (
     LoginResponseData,
     OAuthTokenResponse,
 )
+from app.services.user_management_service import UserManagementService
 from app.services.user_service import UserService
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -126,3 +129,71 @@ def read_current_user(current_user: User = Depends(get_current_active_user)):
         "message": "success",
         "data": UserService.to_current_user_response(current_user),
     }
+
+
+class UpdateProfileRequest(BaseModel):
+    real_name: str | None = Field(default=None, max_length=100)
+    phone: str | None = Field(default=None, max_length=32)
+    email: str | None = Field(default=None, max_length=128)
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=6, max_length=128)
+
+
+def profile_success(data: dict | None = None, message: str = "success") -> dict:
+    return {"code": 200, "message": message, "data": data or {}}
+
+
+@router.put("/me")
+def update_my_profile(
+    payload: UpdateProfileRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    try:
+        from app.schemas.user_management import UserUpdate
+        update_data = UserUpdate(
+            real_name=payload.real_name,
+            phone=payload.phone,
+            email=payload.email,
+        )
+        user = UserManagementService.update_my_profile(db, current_user, update_data)
+        return profile_success(data=UserManagementService.user_to_dict(user), message="个人信息更新成功")
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"数据库操作失败：{exc}") from exc
+
+
+@router.put("/change-password")
+def change_password(
+    payload: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    from app.core.security import verify_password, get_password_hash
+
+    if not verify_password(payload.old_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="旧密码不正确",
+        )
+
+    if payload.old_password == payload.new_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="新密码不能与旧密码相同",
+        )
+
+    try:
+        current_user.password_hash = get_password_hash(payload.new_password)
+        db.commit()
+        db.refresh(current_user)
+        return profile_success(message="密码修改成功")
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"数据库操作失败：{exc}") from exc

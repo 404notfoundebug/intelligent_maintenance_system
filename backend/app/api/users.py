@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -15,6 +16,7 @@ from app.schemas.user_management import (
     UserUpdate,
 )
 from app.services.user_management_service import UserManagementService
+from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -36,6 +38,22 @@ def raise_service_error(exc: Exception) -> None:
             detail=f"数据库操作失败：{exc}",
         ) from exc
     raise exc
+
+
+@router.get("/workers", response_model=UserApiResponse)
+def list_workers(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """获取所有维修工人列表（供创建工单时选择）"""
+    try:
+        workers = UserManagementService.list_workers(db)
+        return success(data=[
+            {"id": w.id, "username": w.username, "real_name": w.real_name, "phone": w.phone}
+            for w in workers
+        ])
+    except Exception as exc:
+        raise_service_error(exc)
 
 
 @router.get("/roles", response_model=UserApiResponse)
@@ -76,6 +94,7 @@ def create_user(
 ):
     try:
         user = UserManagementService.create_user(db, payload)
+        AuditService.write(db, "create", "用户管理", "user", target_id=user.id, target_name=user.username, detail=f"创建用户 {user.username}", operator=current_user)
         return success(data=UserManagementService.user_to_dict(user))
     except Exception as exc:
         raise_service_error(exc)
@@ -181,5 +200,80 @@ def reset_password(
     try:
         user = UserManagementService.reset_password(db, user_id, payload)
         return success(data={"user_id": user.id}, message="密码重置成功")
+    except Exception as exc:
+        raise_service_error(exc)
+
+
+@router.delete("/{user_id}", response_model=UserApiResponse)
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    try:
+        if user_id == current_user.id:
+            raise ValueError("不能删除当前登录用户")
+        UserManagementService.delete_user(db, user_id)
+        AuditService.write(db, "delete", "用户管理", "user", target_id=user_id, detail=f"删除用户 ID={user_id}", operator=current_user)
+        return success(data={"user_id": user_id}, message="用户删除成功")
+    except Exception as exc:
+        raise_service_error(exc)
+
+
+# ============ 角色 CRUD ============
+
+class RoleCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=32)
+    description: str | None = Field(default=None, max_length=100)
+
+
+class RoleUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, max_length=32)
+    description: str | None = Field(default=None, max_length=100)
+
+
+@router.post("/roles", response_model=UserApiResponse)
+def create_role(
+    payload: RoleCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    try:
+        role = UserManagementService.create_role(db, payload.name, payload.description)
+        AuditService.write(db, "create", "角色管理", "role", target_id=role.id, target_name=role.name, detail=f"创建角色 {role.name}", operator=current_user)
+        return success(data=UserManagementService.role_to_dict(role), message="角色创建成功")
+    except Exception as exc:
+        raise_service_error(exc)
+
+
+@router.put("/roles/{role_id}", response_model=UserApiResponse)
+def update_role(
+    role_id: int,
+    payload: RoleUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    try:
+        role = UserManagementService.update_role(
+            db, role_id,
+            name=payload.name,
+            description=payload.description,
+        )
+        AuditService.write(db, "update", "角色管理", "role", target_id=role.id, target_name=role.name, detail=f"更新角色 {role.name}", operator=current_user)
+        return success(data=UserManagementService.role_to_dict(role), message="角色更新成功")
+    except Exception as exc:
+        raise_service_error(exc)
+
+
+@router.delete("/roles/{role_id}", response_model=UserApiResponse)
+def delete_role(
+    role_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    try:
+        UserManagementService.delete_role(db, role_id)
+        AuditService.write(db, "delete", "角色管理", "role", target_id=role_id, detail=f"删除角色 ID={role_id}", operator=current_user)
+        return success(data={"role_id": role_id}, message="角色删除成功")
     except Exception as exc:
         raise_service_error(exc)
