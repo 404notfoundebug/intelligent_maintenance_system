@@ -392,23 +392,47 @@ async function handleLogin() {
   left: 40px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   z-index: 2;
 }
 
 .top-brand-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #2563EB;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #2563EB 0%, #38BDF8 100%);
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
   flex-shrink: 0;
+  position: relative;
+}
+
+.top-brand-dot::before,
+.top-brand-dot::after {
+  content: '';
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  width: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.top-brand-dot::before {
+  left: 9px;
+}
+
+.top-brand-dot::after {
+  right: 9px;
 }
 
 .top-brand-text {
-  font-size: 1.1rem;
-  font-weight: 300;
-  color: #0F172A;
-  letter-spacing: 0.08em;
+  font-family: 'Microsoft YaHei UI', 'PingFang SC', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 1.18rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #102033;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
 }
 
 /* ============================================

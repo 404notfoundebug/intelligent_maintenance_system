@@ -35,7 +35,7 @@ import InspectionTemplateForm from '@/views/inspections/InspectionTemplateForm.v
 import AdminStats from '@/views/admin/AdminStats.vue'
 
 // ---- 工人端页面 ----
-import WorkerDashboard from '@/views/worker/WorkerDashboard.vue'
+import WorkerDashboard from '@/views/worker/WorkerFlowDashboard.vue'
 import WorkerProfile from '@/views/worker/WorkerProfile.vue'
 import WorkerDeviceView from '@/views/worker/WorkerDeviceView.vue'
 import WorkerKnowledgeSearch from '@/views/worker/WorkerKnowledgeSearch.vue'
