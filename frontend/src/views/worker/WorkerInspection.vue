@@ -155,27 +155,35 @@
                       </el-form-item>
                       <el-form-item label="现场照片">
                         <div class="photo-area">
-                          <div v-if="stepFormData[step.id].previewUrl" class="photo-preview-mini">
-                            <img :src="stepFormData[step.id].previewUrl" alt="现场照片" />
-                            <el-button
-                              type="danger"
-                              size="small"
-                              circle
-                              class="photo-remove"
-                              @click="removePhoto(step.id)"
+                          <Transition name="photo-swap" mode="out-in">
+                            <div
+                              v-if="stepFormData[step.id].previewUrl"
+                              key="preview"
+                              class="photo-preview-mini"
                             >
-                              ×
-                            </el-button>
-                          </div>
-                          <el-upload
-                            v-else
-                            :auto-upload="false"
-                            :limit="1"
-                            accept=".jpg,.jpeg,.png,.webp"
-                            :on-change="(file) => handlePhotoChange(step.id, file)"
-                          >
-                            <el-button size="small" type="primary" plain>选择照片</el-button>
-                          </el-upload>
+                              <img :src="stepFormData[step.id].previewUrl" alt="现场照片" />
+                              <el-button
+                                type="danger"
+                                size="small"
+                                circle
+                                class="photo-remove"
+                                aria-label="移除现场照片"
+                                @click="removePhoto(step.id)"
+                              >
+                                ×
+                              </el-button>
+                            </div>
+                            <el-upload
+                              v-else
+                              key="upload"
+                              :auto-upload="false"
+                              :limit="1"
+                              accept=".jpg,.jpeg,.png,.webp"
+                              :on-change="(file) => handlePhotoChange(step.id, file)"
+                            >
+                              <el-button size="small" type="primary" plain>选择照片</el-button>
+                            </el-upload>
+                          </Transition>
                           <span v-if="step.photo_path && !stepFormData[step.id].previewUrl" class="existing-photo">
                             已有照片
                             <el-button link type="primary" size="small" @click="previewPhoto(step.photo_path)">
@@ -223,9 +231,17 @@
           type="success"
           :disabled="!allStepsDone(currentOrder)"
           :loading="completing"
+          class="complete-button"
+          :class="{ 'is-success': completionState === 'success' }"
           @click="handleComplete(currentOrder)"
         >
-          完成工单
+          <Transition name="complete-label" mode="out-in">
+            <span v-if="completionState === 'success'" key="success" class="complete-button-label">
+              <el-icon><Check /></el-icon>
+              已完成
+            </span>
+            <span v-else key="idle" class="complete-button-label">完成工单</span>
+          </Transition>
         </el-button>
       </template>
     </el-drawer>
@@ -242,6 +258,7 @@
 <script setup>
 import { computed, onMounted, onBeforeUnmount, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Check } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { fetchFileBlob } from '@/api/files'
 import {
@@ -262,6 +279,7 @@ const detailLoading = ref(false)
 const currentOrder = ref(null)
 const steps = ref([])
 const completing = ref(false)
+const completionState = ref('idle')
 
 // 每步骤的表单数据 { stepId: { result, remark, previewUrl, file } }
 const stepFormData = reactive({})
@@ -379,6 +397,7 @@ function initStepForms() {
 }
 
 function resetDrawer() {
+  completionState.value = 'idle'
   currentOrder.value = null
   steps.value = []
   Object.keys(stepFormData).forEach(k => delete stepFormData[k])
@@ -461,14 +480,20 @@ async function handleComplete(row) {
       '完成确认',
       { confirmButtonText: '确认完成', cancelButtonText: '取消', type: 'warning' }
     )
+    completing.value = true
     await completeInspectionOrder(row.id)
+    completing.value = false
+    completionState.value = 'success'
     ElMessage.success('工单已完成')
+    await new Promise((resolve) => window.setTimeout(resolve, 200))
     drawerVisible.value = false
     await fetchOrders()
   } catch (e) {
     if (e !== 'cancel') {
       // error handled by interceptor
     }
+  } finally {
+    completing.value = false
   }
 }
 
@@ -658,6 +683,7 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid #e2e8f0;
+  transform-origin: left center;
 }
 
 .photo-preview-mini img {
@@ -673,6 +699,51 @@ onBeforeUnmount(() => {
   width: 20px;
   height: 20px;
   font-size: 12px;
+}
+
+.photo-swap-enter-active {
+  transition: opacity 160ms var(--app-ease-out), transform 160ms var(--app-ease-out);
+}
+
+.photo-swap-leave-active {
+  transition: opacity 100ms var(--app-ease-out), transform 100ms var(--app-ease-out);
+}
+
+.photo-swap-enter-from,
+.photo-swap-leave-to {
+  opacity: 0;
+  transform: scale(0.97);
+}
+
+.complete-button-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.complete-button.is-success {
+  color: #fff;
+  background: #2fb171;
+  border-color: #2fb171;
+}
+
+.complete-label-enter-active {
+  transition: opacity 140ms var(--app-ease-out), transform 140ms var(--app-ease-out);
+}
+
+.complete-label-leave-active {
+  transition: opacity 80ms var(--app-ease-out), transform 80ms var(--app-ease-out);
+}
+
+.complete-label-enter-from {
+  opacity: 0;
+  transform: scale(0.92);
+}
+
+.complete-label-leave-to {
+  opacity: 0;
+  transform: scale(0.97);
 }
 
 .existing-photo {
@@ -714,5 +785,21 @@ onBeforeUnmount(() => {
 .photo-full :deep(.el-image) {
   max-height: 68vh;
   max-width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo-swap-enter-active,
+  .photo-swap-leave-active,
+  .complete-label-enter-active,
+  .complete-label-leave-active {
+    transition: opacity 100ms ease-out !important;
+  }
+
+  .photo-swap-enter-from,
+  .photo-swap-leave-to,
+  .complete-label-enter-from,
+  .complete-label-leave-to {
+    transform: none !important;
+  }
 }
 </style>

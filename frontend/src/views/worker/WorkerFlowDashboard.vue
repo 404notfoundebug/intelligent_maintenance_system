@@ -205,12 +205,8 @@ onMounted(async () => {
   gap: 22px;
   max-width: 100%;
   overflow: hidden;
-  animation: pageIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes pageIn {
-  from { opacity: 0; transform: translateY(14px); }
-  to { opacity: 1; transform: translateY(0); }
+  max-width: 1520px;
+  margin: 0 auto;
 }
 
 .hero-panel,
@@ -246,12 +242,6 @@ onMounted(async () => {
   border-radius: 50%;
   background: radial-gradient(circle, rgba(37, 99, 235, 0.14), rgba(16, 185, 129, 0.06) 48%, transparent 70%);
   filter: blur(6px);
-  animation: auraDrift 9s ease-in-out infinite;
-}
-
-@keyframes auraDrift {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-26px, 18px) scale(1.08); }
 }
 
 .hero-copy,
@@ -277,7 +267,9 @@ onMounted(async () => {
 }
 
 .hero-copy h1 {
-  font-size: 2rem;
+  font-size: clamp(1.8rem, 3vw, 2.35rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
 }
 
 .hero-copy p {
@@ -303,12 +295,6 @@ onMounted(async () => {
   place-items: center;
   background: conic-gradient(from 90deg, #2563EB, #10B981, #A78BFA, #2563EB);
   box-shadow: 0 16px 34px rgba(37, 99, 235, 0.22);
-  animation: orbitPulse 3.8s ease-in-out infinite;
-}
-
-@keyframes orbitPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.04); }
 }
 
 .orbit-core {
@@ -396,6 +382,17 @@ onMounted(async () => {
   transform: translateY(-4px);
   border-color: rgba(37, 99, 235, 0.32);
   box-shadow: 0 18px 40px -24px rgba(37, 99, 235, 0.42);
+}
+
+.workflow-card:focus-visible,
+.assist-list button:focus-visible {
+  outline: 3px solid rgba(36, 168, 107, 0.22);
+  outline-offset: 2px;
+}
+
+.workflow-card:active,
+.assist-list button:active {
+  transform: scale(0.98);
 }
 
 .step-index {
@@ -504,7 +501,7 @@ onMounted(async () => {
 }
 
 .assist-list button:hover {
-  transform: translateX(4px);
+  transform: translateX(3px);
   border-color: #BFDBFE;
 }
 

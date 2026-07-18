@@ -80,19 +80,21 @@
               开始恢复
             </el-button>
           </div>
-          <div v-if="importResult" style="margin-top: 12px;">
-            <el-alert
-              :title="importResult.message"
-              :type="importResult.errors?.length ? 'warning' : 'success'"
-              :closable="false"
-              show-icon
-            />
-            <div v-if="importResult.errors?.length" style="margin-top: 8px;">
-              <p v-for="(err, i) in importResult.errors" :key="i" style="color:#e6a23c;font-size:12px;">
-                {{ err }}
-              </p>
+          <Transition name="backup-result">
+            <div v-if="importResult" class="import-result" aria-live="polite">
+              <el-alert
+                :title="importResult.message"
+                :type="importResult.errors?.length ? 'warning' : 'success'"
+                :closable="false"
+                show-icon
+              />
+              <div v-if="importResult.errors?.length" class="import-errors">
+                <p v-for="(err, i) in importResult.errors" :key="i">
+                  {{ err }}
+                </p>
+              </div>
             </div>
-          </div>
+          </Transition>
         </el-card>
       </el-col>
     </el-row>
@@ -252,5 +254,46 @@ onMounted(fetchStats)
   display: flex;
   flex-wrap: wrap;
   gap: 8px 20px;
+}
+
+.import-result {
+  margin-top: 12px;
+}
+
+.import-errors {
+  margin-top: 8px;
+}
+
+.import-errors p {
+  margin: 4px 0;
+  color: #b86200;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.backup-result-enter-active {
+  transition: opacity 200ms var(--app-ease-out), transform 200ms var(--app-ease-out);
+}
+
+.backup-result-leave-active {
+  transition: opacity 150ms var(--app-ease-out), transform 150ms var(--app-ease-out);
+}
+
+.backup-result-enter-from,
+.backup-result-leave-to {
+  opacity: 0;
+  transform: translateY(6px) scale(0.992);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backup-result-enter-active,
+  .backup-result-leave-active {
+    transition: opacity 120ms ease-out !important;
+  }
+
+  .backup-result-enter-from,
+  .backup-result-leave-to {
+    transform: none !important;
+  }
 }
 </style>

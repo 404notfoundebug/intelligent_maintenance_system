@@ -224,22 +224,25 @@ onMounted(loadDashboard)
 .admin-dashboard-page {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
+  max-width: 1520px;
+  margin: 0 auto;
 }
 
 .dashboard-hero {
   min-height: 166px;
   padding: 26px 28px;
-  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 26px;
   background:
-    linear-gradient(135deg, rgba(29, 78, 216, 0.96), rgba(14, 165, 233, 0.9)),
+    linear-gradient(135deg, rgba(20, 83, 196, 0.96), rgba(10, 132, 255, 0.88)),
     radial-gradient(circle at 92% 18%, rgba(255, 255, 255, 0.28), transparent 24%);
   color: #FFFFFF;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
-  box-shadow: 0 22px 50px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 28px 70px -34px rgba(10, 73, 170, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.34);
 }
 
 .hero-kicker,
@@ -248,14 +251,14 @@ onMounted(loadDashboard)
   color: rgba(255, 255, 255, 0.78);
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0;
+  letter-spacing: 0.11em;
 }
 
 .dashboard-hero h1 {
   margin: 10px 0 8px;
-  font-size: 28px;
-  line-height: 1.2;
-  letter-spacing: 0;
+  font-size: clamp(1.8rem, 3vw, 2.25rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
 }
 
 .dashboard-hero p {
@@ -270,10 +273,11 @@ onMounted(loadDashboard)
   flex-shrink: 0;
   border-color: rgba(255, 255, 255, 0.44);
   background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(12px);
 }
 
 .dashboard-alert {
-  border-radius: 8px;
+  border-radius: 16px;
 }
 
 .metric-grid {
@@ -285,10 +289,11 @@ onMounted(loadDashboard)
 .metric-card {
   min-height: 106px;
   padding: 18px;
-  border: 1px solid rgba(191, 219, 254, 0.75);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--app-border);
+  border-radius: 19px;
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-md);
+  backdrop-filter: blur(22px) saturate(150%);
   display: flex;
   align-items: center;
   gap: 14px;
@@ -298,7 +303,7 @@ onMounted(loadDashboard)
 .module-icon {
   width: 42px;
   height: 42px;
-  border-radius: 8px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -322,6 +327,7 @@ onMounted(loadDashboard)
   color: #0F172A;
   font-size: 26px;
   line-height: 1;
+  letter-spacing: -0.035em;
 }
 
 .dashboard-grid {
@@ -335,11 +341,12 @@ onMounted(loadDashboard)
 }
 
 .panel {
-  border: 1px solid rgba(191, 219, 254, 0.72);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
-  padding: 18px;
+  border: 1px solid var(--app-border);
+  border-radius: 22px;
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-md);
+  padding: 22px;
+  backdrop-filter: blur(24px) saturate(150%);
 }
 
 .panel-heading {
@@ -351,14 +358,15 @@ onMounted(loadDashboard)
 }
 
 .panel-kicker {
-  color: #2563EB;
+  color: #0A84FF;
+  letter-spacing: 0.1em;
 }
 
 .panel h2 {
   margin: 6px 0 0;
   color: #0F172A;
-  font-size: 18px;
-  letter-spacing: 0;
+  font-size: 19px;
+  letter-spacing: -0.018em;
 }
 
 .module-grid {
@@ -379,19 +387,19 @@ onMounted(loadDashboard)
 .module-card {
   min-height: 126px;
   padding: 16px;
-  border-radius: 8px;
-  background: #F8FBFF;
-  border: 1px solid rgba(219, 234, 254, 0.95);
+  border-radius: 16px;
+  background: rgba(248, 250, 252, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.17);
   display: flex;
   flex-direction: column;
   gap: 10px;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 220ms var(--app-ease), border-color 180ms ease, box-shadow 220ms var(--app-ease);
 }
 
 .module-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(37, 99, 235, 0.5);
-  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.12);
+  transform: translateY(-3px);
+  border-color: rgba(10, 132, 255, 0.34);
+  box-shadow: 0 18px 34px -22px rgba(10, 132, 255, 0.72);
 }
 
 .module-title {
@@ -417,9 +425,9 @@ onMounted(loadDashboard)
 .attention-item {
   height: 52px;
   padding: 0 14px;
-  border-radius: 8px;
-  background: #F8FBFF;
-  border: 1px solid rgba(219, 234, 254, 0.95);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.17);
   display: grid;
   grid-template-columns: 12px 1fr auto;
   align-items: center;
@@ -467,9 +475,9 @@ onMounted(loadDashboard)
 .recent-item {
   min-height: 46px;
   padding: 10px 12px;
-  border-radius: 8px;
-  background: #F8FBFF;
-  border: 1px solid rgba(219, 234, 254, 0.95);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.17);
   display: grid;
   grid-template-columns: 44px 1fr;
   align-items: center;
@@ -495,13 +503,26 @@ onMounted(loadDashboard)
 
 .empty-state {
   height: 126px;
-  border-radius: 8px;
-  background: #F8FBFF;
+  border-radius: 16px;
+  background: rgba(248, 250, 252, 0.72);
   border: 1px dashed rgba(148, 163, 184, 0.55);
   color: #94A3B8;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.module-card:focus-visible,
+.attention-item:focus-visible,
+.recent-item:focus-visible {
+  outline: 3px solid rgba(10, 132, 255, 0.24);
+  outline-offset: 2px;
+}
+
+.module-card:active,
+.attention-item:active,
+.recent-item:active {
+  transform: scale(0.98);
 }
 
 .blue {

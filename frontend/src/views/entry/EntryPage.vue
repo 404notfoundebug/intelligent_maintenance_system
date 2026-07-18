@@ -83,7 +83,7 @@
       <div class="login-section">
         <div class="login-wrapper">
           <!-- 面板切换：mode="out-in" 确保旧面板完全离开后新面板才进入 -->
-          <Transition name="panel-switch" mode="out-in">
+          <Transition :name="panelTransitionName" mode="out-in">
             <!-- 角色选择卡片 -->
             <div v-if="!loginVisible" key="role" class="login-card">
               <h2 class="card-title">登录梯小维</h2>
@@ -122,7 +122,7 @@
             <!-- 登录表单卡片 -->
             <div v-else key="login" class="login-card">
               <div class="login-header">
-                <button class="back-btn" @click="loginVisible = false">
+                <button class="back-btn" aria-label="返回角色选择" @click="closeLogin">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6" /></svg>
                 </button>
                 <h3 class="login-title">{{ loginRole === 'admin' ? '管理员登录' : '维修工人登录' }}</h3>
@@ -187,6 +187,7 @@ const loginVisible = ref(false)
 const loginRole = ref('')
 const loginLoading = ref(false)
 const loginFormRef = ref(null)
+const panelTransitionName = ref('panel-forward')
 
 const loginForm = reactive({
   username: '',
@@ -199,6 +200,7 @@ const loginRules = {
 }
 
 function openLogin(role) {
+  panelTransitionName.value = 'panel-forward'
   loginRole.value = role
   loginForm.username = ''
   loginForm.password = ''
@@ -206,6 +208,11 @@ function openLogin(role) {
   nextTick(() => {
     loginFormRef.value?.resetFields()
   })
+}
+
+function closeLogin() {
+  panelTransitionName.value = 'panel-back'
+  loginVisible.value = false
 }
 
 async function handleLogin() {
@@ -224,10 +231,10 @@ async function handleLogin() {
     })
 
     const actualRole = result.role
-    loginVisible.value = false
 
     if (actualRole !== loginRole.value) {
       userStore.logout()
+      closeLogin()
       ElMessage.warning(`您的角色是"${actualRole === 'admin' ? '管理员' : '维修工人'}"，与所选端不匹配，请重新选择`)
       return
     }
@@ -612,7 +619,11 @@ async function handleLogin() {
   border: 1px solid #E2E8F0;
   border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    transform 180ms var(--app-ease-out),
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
   font-family: inherit;
   text-align: left;
   color: #1E293B;
@@ -681,7 +692,7 @@ async function handleLogin() {
 .role-arrow {
   color: #CBD5E1;
   flex-shrink: 0;
-  transition: all 0.2s;
+  transition: color 180ms ease, transform 180ms var(--app-ease-out);
 }
 
 .role-btn:hover .role-arrow {
@@ -720,7 +731,11 @@ async function handleLogin() {
   justify-content: center;
   cursor: pointer;
   color: #94A3B8;
-  transition: all 0.2s;
+  transition:
+    transform 160ms var(--app-ease-out),
+    color 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease;
   flex-shrink: 0;
 }
 
@@ -756,7 +771,7 @@ async function handleLogin() {
   border: 1px solid #E2E8F0 !important;
   border-radius: 10px !important;
   box-shadow: none !important;
-  transition: all 0.2s ease;
+  transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
 }
 
 .login-card :deep(.el-input__wrapper:hover) {
@@ -801,7 +816,10 @@ async function handleLogin() {
   background: #2563EB !important;
   border: none !important;
   color: #FFFFFF !important;
-  transition: all 0.2s ease !important;
+  transition:
+    transform 160ms var(--app-ease-out),
+    background-color 180ms ease,
+    box-shadow 180ms ease !important;
   box-shadow: 0 1px 3px rgba(37, 99, 235, 0.12);
 }
 
@@ -816,20 +834,43 @@ async function handleLogin() {
   box-shadow: 0 1px 2px rgba(37, 99, 235, 0.1) !important;
 }
 
-/* ============================================
-   面板切换过渡动画
-   ============================================ */
-.panel-switch-enter-active {
-  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+/* 登录角色与表单沿触发方向互换，进入从容、退出更快。 */
+.panel-forward-enter-active,
+.panel-back-enter-active {
+  transition: opacity 220ms var(--app-ease-out), transform 220ms var(--app-ease-out);
 }
 
-.panel-switch-leave-active {
-  transition: none;
+.panel-forward-leave-active,
+.panel-back-leave-active {
+  transition: opacity 150ms var(--app-ease-out), transform 150ms var(--app-ease-out);
 }
 
-.panel-switch-enter-from {
+.panel-forward-enter-from,
+.panel-back-leave-to {
   opacity: 0;
-  transform: translateY(16px) scale(0.98);
+  transform: translateX(12px) scale(0.985);
+}
+
+.panel-forward-leave-to,
+.panel-back-enter-from {
+  opacity: 0;
+  transform: translateX(-10px) scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-forward-enter-active,
+  .panel-back-enter-active,
+  .panel-forward-leave-active,
+  .panel-back-leave-active {
+    transition: opacity 120ms ease-out !important;
+  }
+
+  .panel-forward-enter-from,
+  .panel-forward-leave-to,
+  .panel-back-enter-from,
+  .panel-back-leave-to {
+    transform: none !important;
+  }
 }
 
 /* ============================================
