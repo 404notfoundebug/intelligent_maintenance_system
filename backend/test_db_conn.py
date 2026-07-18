@@ -1,68 +1,85 @@
-"""数据库连通性检查脚本"""
+"""本地 MySQL 连通性和结构检查脚本。"""
 import sys
-sys.path.insert(0, ".")
 
-from sqlalchemy import text
-from app.core.database import engine, check_database_connection
+from sqlalchemy import inspect, text
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import SQLAlchemyError
 
-print("=" * 50)
-print("  数据库连通性检查")
-print("=" * 50)
+import app.models  # noqa: F401 - 导入全部模型以注册 SQLAlchemy metadata
+from app.core.config import settings
+from app.core.database import Base, check_database_connection, engine
 
-# 1. 基础连接
-ok, msg = check_database_connection()
-print(f"\n[1] 基础连接 (SELECT 1)")
-print(f"    状态: {'✅ 成功' if ok else '❌ 失败'}")
-print(f"    详情: {msg}")
 
-if not ok:
-    sys.exit(1)
+def main() -> int:
+    print("=" * 50)
+    print("  本地 MySQL 数据库检查")
+    print("=" * 50)
 
-# 2. 数据库信息
-with engine.connect() as conn:
-    print(f"\n[2] 数据库信息")
-    version = conn.execute(text("SELECT VERSION()")).scalar()
-    print(f"    版本: {version}")
+    ok, message = check_database_connection()
+    print("\n[1] 基础连接 (SELECT 1)")
+    print(f"    状态: {'成功' if ok else '失败'}")
+    print(f"    详情: {message}")
+    if not ok or engine is None or not settings.database_url:
+        return 1
 
-    db_name = conn.execute(text("SELECT DATABASE()")).scalar()
-    print(f"    当前库: {db_name}")
+    url = make_url(settings.database_url)
+    is_local = (url.host or "").lower() in {"localhost", "127.0.0.1", "::1"}
+    print("\n[2] 连接目标")
+    print(f"    驱动: {url.drivername}")
+    print(f"    主机: {url.host}:{url.port or 3306}")
+    print(f"    数据库: {url.database}")
+    print(f"    本地连接: {'是' if is_local else '否'}")
+    if not is_local:
+        return 1
 
-    charset = conn.execute(text("SELECT @@character_set_database")).scalar()
-    print(f"    字符集: {charset}")
+    try:
+        with engine.connect() as connection:
+            version = connection.execute(text("SELECT VERSION()")).scalar()
+            charset = connection.execute(text("SELECT @@character_set_database")).scalar()
+        print("\n[3] 数据库信息")
+        print(f"    版本: {version}")
+        print(f"    字符集: {charset}")
 
-# 3. 表清单
-with engine.connect() as conn:
-    tables = conn.execute(text("SHOW TABLES")).fetchall()
-    print(f"\n[3] 表清单 ({len(tables)} 张表)")
-    for row in tables:
-        print(f"    - {row[0]}")
+        inspector = inspect(engine)
+        database_tables = set(inspector.get_table_names())
+        model_tables = set(Base.metadata.tables)
+        missing_tables = sorted(model_tables - database_tables)
+        extra_tables = sorted(database_tables - model_tables)
+        column_issues: list[str] = []
 
-# 4. 关键表数据量
-with engine.connect() as conn:
-    print(f"\n[4] 关键表数据量")
-    for table_name in ["roles", "users", "devices", "inspection_orders", "inspection_templates", "maintenance_records", "fault_reports"]:
-        try:
-            count = conn.execute(text(f"SELECT COUNT(*) FROM {table_name}")).scalar()
-            print(f"    {table_name}: {count} 条")
-        except Exception as e:
-            print(f"    {table_name}: 查询失败 - {e}")
+        for table_name in sorted(model_tables & database_tables):
+            model_columns = set(Base.metadata.tables[table_name].columns.keys())
+            database_columns = {
+                column["name"] for column in inspector.get_columns(table_name)
+            }
+            missing_columns = sorted(model_columns - database_columns)
+            if missing_columns:
+                column_issues.append(f"{table_name}: 缺少 {', '.join(missing_columns)}")
 
-# 5. 默认管理员检查
-with engine.connect() as conn:
-    admin = conn.execute(text("SELECT id, username, real_name, is_active FROM users WHERE username = 'admin'")).fetchone()
-    print(f"\n[5] 默认管理员")
-    if admin:
-        print(f"    ID: {admin[0]}, 用户名: {admin[1]}, 姓名: {admin[2]}, 启用: {admin[3]}")
-    else:
-        print(f"    ❌ 未找到 admin 用户")
+        print("\n[4] 表结构")
+        print(f"    模型表数量: {len(model_tables)}")
+        print(f"    数据库表数量: {len(database_tables)}")
+        print(f"    缺少表: {', '.join(missing_tables) if missing_tables else '无'}")
+        print(f"    额外表: {', '.join(extra_tables) if extra_tables else '无'}")
+        print(f"    字段问题: {'; '.join(column_issues) if column_issues else '无'}")
 
-# 6. 角色检查
-with engine.connect() as conn:
-    roles = conn.execute(text("SELECT id, name, description FROM roles")).fetchall()
-    print(f"\n[6] 角色 ({len(roles)} 个)")
-    for r in roles:
-        print(f"    ID:{r[0]}  {r[1]}  ({r[2]})")
+        if missing_tables or column_issues:
+            print("\n检查失败：请先执行 python -m app.init_db 完成本地数据库迁移")
+            return 1
 
-print(f"\n{'=' * 50}")
-print("  检查完成")
-print("=" * 50)
+        with engine.connect() as connection:
+            roles = connection.execute(text("SELECT COUNT(*) FROM roles")).scalar()
+            users = connection.execute(text("SELECT COUNT(*) FROM users")).scalar()
+        print("\n[5] 基础数据")
+        print(f"    角色: {roles} 条")
+        print(f"    用户: {users} 条")
+    except SQLAlchemyError as exc:
+        print(f"\n检查失败: {exc}")
+        return 1
+
+    print("\n本地 MySQL 连接和表结构检查通过")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

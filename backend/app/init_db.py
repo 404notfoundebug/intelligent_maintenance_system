@@ -43,12 +43,67 @@ def ensure_knowledge_chunk_file_id_nullable() -> None:
         return
 
     if engine.dialect.name != "mysql":
-        print("璺宠繃 knowledge_chunks.file_id 鍙┖杩佺Щ锛氬綋鍓嶉潪 MySQL 鏁版嵁搴?")
+        print("跳过 knowledge_chunks.file_id 可空迁移：当前不是 MySQL 数据库")
         return
 
     with engine.begin() as connection:
         connection.execute(text("ALTER TABLE knowledge_chunks MODIFY COLUMN file_id INT NULL"))
-    print("宸插皢 knowledge_chunks.file_id 璋冩暣涓哄彲绌猴紝鐢ㄤ簬妫€淇渚嬪叆搴?")
+    print("已将 knowledge_chunks.file_id 调整为可空，用于检修案例入库")
+
+
+def ensure_maintenance_audit_columns() -> None:
+    """为已有本地数据库补齐维保审核字段、索引和外键。"""
+    if engine.dialect.name != "mysql":
+        raise RuntimeError("本项目仅支持本地 MySQL 数据库")
+
+    table_name = "maintenance_records"
+    inspector = inspect(engine)
+    existing_columns = {column["name"] for column in inspector.get_columns(table_name)}
+    column_statements = {
+        "audit_status": (
+            "ALTER TABLE maintenance_records "
+            "ADD COLUMN audit_status VARCHAR(20) NOT NULL DEFAULT 'pending'"
+        ),
+        "auditor_id": "ALTER TABLE maintenance_records ADD COLUMN auditor_id INT NULL",
+        "audit_time": "ALTER TABLE maintenance_records ADD COLUMN audit_time DATETIME NULL",
+        "reject_reason": "ALTER TABLE maintenance_records ADD COLUMN reject_reason TEXT NULL",
+    }
+
+    for column_name, statement in column_statements.items():
+        if column_name in existing_columns:
+            continue
+        with engine.begin() as connection:
+            connection.execute(text(statement))
+        print(f"已新增 maintenance_records.{column_name}")
+
+    inspector = inspect(engine)
+    existing_indexes = {index["name"] for index in inspector.get_indexes(table_name)}
+    if "ix_maintenance_records_audit_status" not in existing_indexes:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "CREATE INDEX ix_maintenance_records_audit_status "
+                    "ON maintenance_records (audit_status)"
+                )
+            )
+        print("已创建 maintenance_records.audit_status 索引")
+
+    inspector = inspect(engine)
+    has_auditor_foreign_key = any(
+        foreign_key.get("constrained_columns") == ["auditor_id"]
+        and foreign_key.get("referred_table") == "users"
+        for foreign_key in inspector.get_foreign_keys(table_name)
+    )
+    if not has_auditor_foreign_key:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE maintenance_records "
+                    "ADD CONSTRAINT fk_maintenance_records_auditor_id_users "
+                    "FOREIGN KEY (auditor_id) REFERENCES users(id)"
+                )
+            )
+        print("已创建 maintenance_records.auditor_id 外键")
 
 
 def init_roles(db: Session) -> dict[str, Role]:
@@ -91,12 +146,13 @@ def init_database() -> None:
     try:
         Base.metadata.create_all(bind=engine)
         ensure_knowledge_chunk_file_id_nullable()
+        ensure_maintenance_audit_columns()
         with Session(engine) as db:
             roles = init_roles(db)
             init_default_admin(db, roles["admin"])
             db.commit()
         print("数据库初始化完成")
-    except SQLAlchemyError as exc:
+    except (SQLAlchemyError, RuntimeError) as exc:
         print(f"数据库初始化失败：{exc}")
         sys.exit(1)
 

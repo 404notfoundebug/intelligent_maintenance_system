@@ -10,10 +10,10 @@
 
 ```powershell
 cd backend
-python -m venv .venv
+py -3.11 -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt
-copy .env.tidb.example .env
+copy .env.example .env
 python -m app.init_db
 uvicorn main:app --reload
 ```
@@ -68,7 +68,7 @@ admin / admin123456
 当前后端已实现的基础能力包括：
 
 - FastAPI 后端基础框架
-- TiDB Cloud / MySQL + SQLAlchemy 数据库连接
+- 本地 MySQL 8.0 + SQLAlchemy 数据库连接
 - 用户登录与 JWT 认证
 - `admin`、`worker`、`auditor` 三类角色权限
 - 知识库文档上传、解析、文本切分与入库
@@ -101,7 +101,7 @@ admin / admin123456
 当前项目后端采用轻量、可部署、易扩展的技术路线：
 
 - Web 框架：FastAPI
-- 数据库：MySQL 协议数据库，当前推荐 TiDB Cloud Serverless
+- 数据库：本地 MySQL 8.0
 - ORM：SQLAlchemy
 - 认证方式：JWT
 - 文档解析：TXT、PDF、DOCX
@@ -112,15 +112,15 @@ admin / admin123456
 
 系统暂不使用 `torch`、`faiss`、`chromadb`、`CUDA` 等重依赖，便于在 LoongArch + 银河麒麟等国产化服务器环境中部署。后续可在 `SearchService` 层平滑替换为 embedding 向量检索。
 
-## TiDB Cloud 数据库配置
+## 本地 MySQL 数据库配置
 
-当前项目推荐使用 TiDB Cloud Serverless 作为云端 SQL 数据库。TiDB 兼容 MySQL 协议，因此后端继续使用：
+当前项目使用本机 MySQL 8.0，后端使用：
 
 ```text
 SQLAlchemy + PyMySQL + mysql+pymysql://...
 ```
 
-首次使用新的 TiDB 数据库时，需要先创建业务库：
+首次运行时，需要先创建本地业务库：
 
 ```sql
 CREATE DATABASE IF NOT EXISTS intelligent_maintenance
@@ -131,14 +131,14 @@ CREATE DATABASE IF NOT EXISTS intelligent_maintenance
 然后在 `backend/.env` 中配置连接串：
 
 ```env
-DATABASE_URL=mysql+pymysql://<tidb_user>:<tidb_password>@<tidb_host>:4000/intelligent_maintenance?charset=utf8mb4&ssl_verify_cert=true&ssl_verify_identity=true
+DATABASE_URL=mysql+pymysql://maintenance_app:your_mysql_password@127.0.0.1:3306/intelligent_maintenance?charset=utf8mb4
 ```
 
 可以从模板复制：
 
 ```powershell
 cd backend
-copy .env.tidb.example .env
+copy .env.example .env
 ```
 
 配置完成后初始化数据库：
@@ -147,17 +147,7 @@ copy .env.tidb.example .env
 python -m app.init_db
 ```
 
-初始化脚本会创建业务表、默认角色和默认管理员，并且可以重复执行。更多说明见 [docs/tidb-cloud-setup.md](docs/tidb-cloud-setup.md)。
-
-### 组员连接同一个 TiDB
-
-如果组员要在本地运行后端并连接同一个 TiDB，需要：
-
-1. 使用同一套 `DATABASE_URL`。
-2. 在 TiDB Cloud 的 `Networking` 中允许组员公网 IP。
-3. 或者比赛演示期间临时允许 `0.0.0.0 - 255.255.255.255`。
-
-长期不建议全网开放。比赛结束后建议收紧到后端服务器 IP 或组员固定 IP，并重置数据库密码。
+初始化脚本会创建业务表、迁移旧库缺失的字段和外键、初始化默认角色和管理员，并且可以重复执行。更多说明见 [docs/local-mysql-setup.md](docs/local-mysql-setup.md)。
 
 ## 后端目录
 
@@ -192,16 +182,10 @@ pip install -r requirements.txt
 配置 `.env`：
 
 ```env
-DATABASE_URL=mysql+pymysql://<tidb_user>:<tidb_password>@<tidb_host>:4000/intelligent_maintenance?charset=utf8mb4&ssl_verify_cert=true&ssl_verify_identity=true
+DATABASE_URL=mysql+pymysql://maintenance_app:your_mysql_password@127.0.0.1:3306/intelligent_maintenance?charset=utf8mb4
 LLM_API_KEY=你的API Key
 LLM_BASE_URL=https://api.deepseek.com/v1
 LLM_MODEL=deepseek-chat
-```
-
-如果使用本地 MySQL，可改为：
-
-```env
-DATABASE_URL=mysql+pymysql://root:your_mysql_password@localhost:3306/intelligent_maintenance?charset=utf8mb4
 ```
 
 初始化数据库：
@@ -287,8 +271,7 @@ repair_manual_elevator_general_fault_troubleshooting_course_standard.pdf
 代码仓库安全规则：
 
 - 不要提交真实 `.env`
-- 不要提交数据库密码、TiDB 密码、API Key
+- 不要提交数据库密码或 API Key
 - `.gitignore` 已忽略 `.env`、`.env.*`、`uploads/`、`*.log`、虚拟环境、前端依赖和构建产物
-- 只允许提交 `.env.example`、`.env.tidb.example` 这类无密钥模板
-- 如果 TiDB 密码曾在截图或聊天中暴露，正式演示前应重置密码并更新 `backend/.env`
-- TiDB Networking 不建议长期允许全网访问；比赛结束后应收紧到后端服务器 IP 或组员固定 IP
+- 只允许提交 `.env.example` 这类无密钥模板
+- 如果本地数据库密码曾在截图或聊天中暴露，应立即重置密码并更新 `backend/.env`

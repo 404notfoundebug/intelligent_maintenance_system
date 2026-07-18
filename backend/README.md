@@ -1,6 +1,6 @@
 # 智能电梯扶梯维保系统后端
 
-本项目是“面向电梯扶梯维保场景的多模态知识检索与标准化作业辅助系统”的后端基础框架，基于 FastAPI、SQLAlchemy、MySQL/TiDB 和 JWT 构建。
+本项目是“面向电梯扶梯维保场景的多模态知识检索与标准化作业辅助系统”的后端基础框架，基于 FastAPI、SQLAlchemy、本地 MySQL 8.0 和 JWT 构建。
 
 ## 快速启动
 
@@ -8,39 +8,33 @@ Windows：
 
 ```powershell
 cd backend
-python -m venv .venv
+py -3.11 -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-copy .env.tidb.example .env
+copy .env.example .env
 ```
 
 Linux / 银河麒麟服务器：
 
 ```bash
 cd backend
-python -m venv .venv
+python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.tidb.example .env
+cp .env.example .env
 ```
 
-程序实际读取 `.env`，不会读取 `.env.example` 或 `.env.tidb.example`。
+程序实际读取 `.env`，不会读取 `.env.example`。
 
 ## 配置数据库
 
 确认 `.env` 中 `DATABASE_URL` 正确：
 
 ```env
-DATABASE_URL=mysql+pymysql://<tidb_user>:<tidb_password>@<tidb_host>:4000/intelligent_maintenance?charset=utf8mb4&ssl_verify_cert=true&ssl_verify_identity=true
+DATABASE_URL=mysql+pymysql://maintenance_app:your_mysql_password@127.0.0.1:3306/intelligent_maintenance?charset=utf8mb4
 ```
 
-如果使用本地 MySQL，可改为：
-
-```env
-DATABASE_URL=mysql+pymysql://root:your_mysql_password@localhost:3306/intelligent_maintenance?charset=utf8mb4
-```
-
-在 TiDB Cloud SQL Editor 或 MySQL 中创建数据库：
+在本地 MySQL 中创建数据库：
 
 ```sql
 create database if not exists intelligent_maintenance
@@ -50,7 +44,7 @@ collate utf8mb4_unicode_ci;
 
 ## 初始化数据库
 
-初始化脚本会创建所有表，包括 `roles`、`users`、`knowledge_files`、`knowledge_chunks`，并初始化角色和默认管理员。
+初始化脚本会创建所有表、迁移旧库缺失的字段和外键，并初始化角色和默认管理员。
 
 ```powershell
 python -m app.init_db
